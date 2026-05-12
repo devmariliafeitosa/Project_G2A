@@ -90,6 +90,7 @@ export interface ScheduleEntry {
   dayOfWeek: string;
   timeSlotId: string;
   subjectId: string;
+  teacherId?: string;
 }
 
 export interface Allocation {

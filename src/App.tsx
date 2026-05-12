@@ -14,6 +14,7 @@ import {
   Trash2, 
   Edit3, 
   Eye, 
+  EyeOff,
   CheckCircle2, 
   AlertCircle, 
   ArrowLeft,
@@ -180,56 +181,120 @@ const getWorkloadLimit = (role: UserRole): number => {
 // --- View Components ---
 
 const LoginView = ({ onLogin }: { onLogin: (email: string, pass: string) => void }) => {
-  const [email, setEmail] = useState('admin@ifce.edu.br');
-  const [pass, setPass] = useState('123456');
+  const [email, setEmail] = useState('');
+  const [pass, setPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; pass?: string }>({});
+
+  const validate = () => {
+    const newErrors: { email?: string; pass?: string } = {};
+    if (!email) newErrors.email = 'Campo obrigatório';
+    if (!pass) newErrors.pass = 'Campo obrigatório';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleLogin = () => {
+    if (validate()) {
+      onLogin(email, pass);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-6">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-white p-8 rounded-xl border border-zinc-200 shadow-xl space-y-8"
-      >
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
-            <BookOpen size={32} />
+    <div className="min-h-screen flex items-center justify-center bg-zinc-100 font-sans">
+      <div className="w-full max-w-5xl flex flex-col md:flex-row bg-white rounded-2xl shadow-2xl overflow-hidden min-h-[600px]">
+        {/* Left Side: Login Form */}
+        <div className="w-full md:w-1/2 p-12 flex flex-col items-center justify-center space-y-6 relative">
+          <div className="flex flex-col items-center gap-2 mb-4">
+            <div className="w-12 h-12 bg-[#32a041] rounded-full flex items-center justify-center text-white mb-2">
+              <BookOpen size={24} />
+            </div>
+            <span className="text-xl font-black text-[#58595b] tracking-tight text-center">GESTÃO DE ALOCAÇÃO ACADÊMICA</span>
           </div>
-          <div className="text-center">
-            <h1 className="text-xl font-bold text-zinc-900">Gestão Acadêmica</h1>
-            <p className="text-xs text-primary font-bold uppercase tracking-wider">Campus Tauá</p>
+
+          <h2 className="text-lg font-bold text-zinc-700">Login</h2>
+
+          <div className="w-full max-w-sm bg-white border border-[#32a041] rounded-xl p-4 text-center">
+            <p className="text-[11px] text-zinc-600 font-medium leading-relaxed">
+              Login é <strong>exclusivo</strong> para usuários credenciados
+            </p>
           </div>
+
+          <div className="w-full max-w-sm space-y-4">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Login:*</label>
+              <input 
+                type="text" 
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className={`w-full h-11 ${errors.email ? 'bg-rose-50 border-rose-300' : 'bg-[#fffbec] border-zinc-200'} border rounded-lg px-4 text-sm outline-none transition-all`}
+                placeholder="E-mail ou SIAPE"
+              />
+              {errors.email && <p className="text-[10px] text-rose-500 font-bold ml-1">{errors.email}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Senha:*</label>
+              <div className="relative">
+                <input 
+                  type={showPass ? "text" : "password"}
+                  value={pass}
+                  onChange={e => setPass(e.target.value)}
+                  className={`w-full h-11 ${errors.pass ? 'bg-rose-50 border-rose-300' : 'bg-[#fffbec] border-zinc-200'} border rounded-lg px-4 text-sm outline-none transition-all pr-10`}
+                  placeholder="Sua senha"
+                />
+                <button 
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                >
+                  {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {errors.pass && <p className="text-[10px] text-rose-500 font-bold ml-1">{errors.pass}</p>}
+              <div className="text-right">
+                <button className="text-[11px] text-[#32a041] font-bold hover:underline">Esqueci a senha</button>
+              </div>
+            </div>
+          </div>
+
+          <button 
+            onClick={handleLogin}
+            className="w-full max-w-[180px] h-10 bg-[#32a041] text-white rounded-full font-bold text-xs uppercase tracking-widest hover:bg-[#2b8a38] transition-all shadow-md mt-4"
+          >
+            Entrar
+          </button>
         </div>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">E-mail Institucional</label>
-            <input 
-              type="text" 
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="w-full h-12 bg-zinc-50 border border-zinc-100 rounded-xl px-4 text-sm focus:ring-1 focus:ring-primary/20 outline-none transition-all"
-              placeholder="seu.nome@ifce.edu.br"
-            />
+        {/* Right Side: Welcome Banner */}
+        <div className="hidden md:flex md:w-1/2 bg-[#32a041] p-12 flex-col justify-between text-white relative overflow-hidden">
+          <div className="relative z-10 transition-transform duration-500 hover:translate-x-2">
+            <p className="text-lg font-medium opacity-90 uppercase tracking-[0.2em] mb-4">Bem-vindo ao</p>
+            <h1 className="text-4xl lg:text-5xl font-black leading-tight tracking-tighter">
+              SISTEMA DE GESTÃO <br />
+              ACADÊMICA IFCE TAUÁ
+            </h1>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Senha de Acesso</label>
-            <input 
-              type="password" 
-              value={pass}
-              onChange={e => setPass(e.target.value)}
-              className="w-full h-12 bg-zinc-50 border border-zinc-100 rounded-xl px-4 text-sm focus:ring-1 focus:ring-primary/20 outline-none transition-all"
-              placeholder="••••••••"
-            />
-          </div>
-        </div>
 
-        <button 
-          onClick={() => onLogin(email, pass)}
-          className="w-full h-12 bg-primary text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-primary/20"
-        >
-          Entrar no Sistema
-        </button>
-      </motion.div>
+          <div className="relative z-10 flex justify-center py-12">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 shadow-2xl"
+            >
+              <Activity size={80} className="text-white opacity-80" />
+            </motion.div>
+          </div>
+
+          <div className="relative z-10">
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Versão Web: 1.0.0 (c764035)</p>
+          </div>
+
+          {/* Decorative shapes */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-900/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -239,6 +304,7 @@ const DashboardView = ({
   stats, 
   courses, 
   subjects, 
+  teachers,
   schedules,
   onAddSchedule
 }: { 
@@ -246,6 +312,7 @@ const DashboardView = ({
   stats: any, 
   courses: Course[], 
   subjects: Subject[],
+  teachers: User[],
   schedules: ScheduleEntry[],
   onAddSchedule: (s: Omit<ScheduleEntry, 'id'>) => void
 }) => {
@@ -341,6 +408,7 @@ const DashboardView = ({
                         s.timeSlotId === slot.id
                       );
                       const subject = entryInRange ? subjects.find(s => s.id === entryInRange.subjectId) : null;
+                      const teacher = entryInRange && entryInRange.teacherId ? teachers.find(t => t.id === entryInRange.teacherId) : null;
 
                       if (slot.isBreak) {
                         return (
@@ -350,50 +418,62 @@ const DashboardView = ({
                         );
                       }
 
+                      const isAdminUser = user.id === '99';
+
                       return (
                         <div 
                           key={day}
                           className={`min-h-[60px] rounded-xl border p-2 flex flex-col justify-center shadow-sm relative group cursor-pointer transition-all ${
                             subject 
                               ? (subject.color || PASTEL_COLORS[0])
-                              : 'bg-zinc-50/30 border-zinc-100 hover:border-zinc-200'
+                              : 'bg-zinc-50/30 border-zinc-100' + (!isAdminUser ? ' hover:border-zinc-200' : '')
                           }`}
                         >
                           {subject ? (
                             <>
                               <p className="text-[10px] font-bold leading-tight">{subject.name}</p>
                               <div className="mt-1 flex items-center justify-between">
-                                <span className="text-[8px] font-bold opacity-60 uppercase">IFCE</span>
-                                <button 
-                                  onClick={() => {
-                                    // Remove logic could be here if we were doing full state mgmt
-                                  }}
-                                  className="text-[8px] font-bold opacity-0 group-hover:opacity-100 hover:text-alert"
-                                >
-                                  Remover
-                                </button>
+                                <span className="text-[8px] font-bold opacity-60 uppercase truncate pr-1">
+                                  {teacher ? `Prof: ${teacher.name.split(' ')[0]}` : 'Docente'}
+                                </span>
+                                {!isAdminUser && (
+                                  <button 
+                                    onClick={() => {
+                                      // Remove logic could be here
+                                    }}
+                                    className="text-[8px] font-bold opacity-0 group-hover:opacity-100 hover:text-alert"
+                                  >
+                                    Remover
+                                  </button>
+                                )}
                               </div>
                             </>
                           ) : (
-                            <div className="opacity-0 group-hover:opacity-100 flex flex-col items-center gap-1">
-                              <select 
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    onAddSchedule({
-                                      courseId: selectedCourseId,
-                                      period: selectedPeriod,
-                                      dayOfWeek: day,
-                                      timeSlotId: slot.id,
-                                      subjectId: e.target.value
-                                    });
-                                  }
-                                }}
-                                className="w-full bg-transparent text-[8px] font-bold uppercase tracking-tight text-zinc-400 outline-none"
-                              >
-                                <option value="">+ Alocar</option>
-                                {courseSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                              </select>
-                            </div>
+                            !isAdminUser ? (
+                              <div className="opacity-0 group-hover:opacity-100 flex flex-col items-center gap-1">
+                                <select 
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      // Simple logic: pick the first teacher who is allocated this subject
+                                      // In a real app, this would be more explicit
+                                      const allocatedTeacher = teachers.find(t => t.disciplinasMinistradas.includes(e.target.value));
+                                      onAddSchedule({
+                                        courseId: selectedCourseId,
+                                        period: selectedPeriod,
+                                        dayOfWeek: day,
+                                        timeSlotId: slot.id,
+                                        subjectId: e.target.value,
+                                        teacherId: allocatedTeacher?.id
+                                      });
+                                    }
+                                  }}
+                                  className="w-full bg-transparent text-[8px] font-bold uppercase tracking-tight text-zinc-400 outline-none"
+                                >
+                                  <option value="">+ Alocar</option>
+                                  {courseSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                              </div>
+                            ) : null
                           )}
                         </div>
                       );
@@ -454,13 +534,15 @@ const CoursesView = ({
   teachers, 
   subjects, 
   onAddCourse, 
-  onAddSubject 
+  onAddSubject,
+  onUpdateCourse
 }: { 
   courses: Course[], 
   teachers: User[], 
   subjects: Subject[], 
   onAddCourse: (name: string, level: Level, type: CourseType, duration: 'Semestral' | 'Anual') => void,
-  onAddSubject: (name: string, workload: number, courseId: string, period: number, type: 'Obrigatória' | 'Optativa') => void
+  onAddSubject: (name: string, workload: number, courseId: string, period: number, type: 'Obrigatória' | 'Optativa') => void,
+  onUpdateCourse: (course: Course) => void
 }) => {
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [addingSubjectTo, setAddingSubjectTo] = useState<string | null>(null);
@@ -484,6 +566,11 @@ const CoursesView = ({
   const filteredCourses = useMemo(() => {
     return courses.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [courses, searchTerm]);
+
+  const getAvailableCoordinators = (currentCoordId?: string) => {
+    // Teachers that are not coordinators of ANY other course
+    return teachers.filter(t => !courses.some(c => c.coordinatorId === t.id && c.id !== expandedCourse) || t.id === currentCoordId);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -550,83 +637,108 @@ const CoursesView = ({
       )}
 
       <div className="border border-zinc-200 rounded-xl divide-y divide-zinc-100 bg-white shadow-sm overflow-hidden font-sans">
-        {filteredCourses.length > 0 ? filteredCourses.map(course => (
-          <div key={course.id} className="group">
-            <div 
-              className="p-4 flex items-center justify-between cursor-pointer hover:bg-zinc-50 transition-colors"
-              onClick={() => setExpandedCourse(expandedCourse === course.id ? null : course.id)}
-            >
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-[10px] ${course.level === Level.Superior ? 'bg-primary/10 text-primary' : 'bg-zinc-100 text-zinc-400'}`}>
-                  {course.durationType === 'Semestral' ? 'SEM' : 'ANO'}
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-zinc-900 leading-none">{course.name}</h4>
-                  <p className="text-[10px] text-zinc-500 mt-1 uppercase tracking-tight font-medium">{course.level} • {course.type}</p>
-                </div>
-              </div>
-              <ChevronRight size={18} className={`text-zinc-300 transition-transform ${expandedCourse === course.id ? 'rotate-90 text-primary' : ''}`} />
-            </div>
-
-            <AnimatePresence>
-              {expandedCourse === course.id && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-zinc-50/30 border-t border-zinc-100">
-                  <div className="p-6 space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h5 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                        <BookPlus size={14} /> Matriz Curricular
-                      </h5>
-                      <button onClick={() => setAddingSubjectTo(course.id)} className="text-primary text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 hover:underline underline-offset-4">
-                        <Plus size={12} /> Add Disciplina
-                      </button>
-                    </div>
-
-                    {addingSubjectTo === course.id && (
-                      <div className="p-4 bg-white border border-zinc-200 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-3 items-end shadow-sm animate-in zoom-in-95 duration-200">
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Nome</label>
-                          <input value={newSubject.name} onChange={e => setNewSubject({...newSubject, name: e.target.value})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none focus:border-primary/30" />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Carga (h)</label>
-                          <input type="number" value={newSubject.workload} onChange={e => setNewSubject({...newSubject, workload: parseInt(e.target.value)})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none" />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Período</label>
-                          <input type="number" value={newSubject.period} onChange={e => setNewSubject({...newSubject, period: parseInt(e.target.value)})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none" />
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => { onAddSubject(newSubject.name, newSubject.workload, course.id, newSubject.period, newSubject.type); setAddingSubjectTo(null); }} className="flex-1 bg-primary text-white h-8 rounded text-[10px] font-bold uppercase tracking-widest">Salvar</button>
-                          <button onClick={() => setAddingSubjectTo(null)} className="flex-1 bg-zinc-100 text-zinc-500 h-8 rounded text-[10px] font-bold uppercase tracking-widest">Sair</button>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {subjects.filter(s => s.courseId === course.id).sort((a,b) => a.period - b.period).map(sub => (
-                        <div key={sub.id} className="bg-white p-3 border border-zinc-200 rounded-lg flex items-center justify-between group/sub hover:border-primary/20 transition-all">
-                          <div>
-                            <p className="text-xs font-bold text-zinc-800">{sub.name}</p>
-                            <p className="text-[9px] text-zinc-400 mt-0.5 font-sans uppercase font-medium">{sub.period}º Período • {sub.workload}h</p>
-                          </div>
-                          <button className="text-zinc-200 hover:text-alert opacity-0 group-hover/sub:opacity-100 transition-all">
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-
-                    {subjects.filter(s => s.courseId === course.id).length === 0 && !addingSubjectTo && (
-                      <div className="text-center py-8">
-                        <p className="text-xs text-zinc-400 italic">Nenhuma disciplina cadastrada.</p>
-                      </div>
-                    )}
+        {filteredCourses.length > 0 ? filteredCourses.map(course => {
+          const coordinator = teachers.find(t => t.id === course.coordinatorId);
+          return (
+            <div key={course.id} className="group">
+              <div 
+                className="p-4 flex items-center justify-between cursor-pointer hover:bg-zinc-50 transition-colors"
+                onClick={() => setExpandedCourse(expandedCourse === course.id ? null : course.id)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-[10px] ${course.level === Level.Superior ? 'bg-primary/10 text-primary' : 'bg-zinc-100 text-zinc-400'}`}>
+                    {course.durationType === 'Semestral' ? 'SEM' : 'ANO'}
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )) : (
+                  <div>
+                    <h4 className="text-sm font-bold text-zinc-900 leading-none">{course.name}</h4>
+                    <p className="text-[10px] text-zinc-500 mt-1 uppercase tracking-tight font-medium">
+                      {course.level} • {course.type} {coordinator ? `• Coord: ${coordinator.name}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={18} className={`text-zinc-300 transition-transform ${expandedCourse === course.id ? 'rotate-90 text-primary' : ''}`} />
+              </div>
+
+              <AnimatePresence>
+                {expandedCourse === course.id && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-zinc-50/30 border-t border-zinc-100">
+                    <div className="p-6 space-y-6">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-zinc-100 shadow-sm">
+                        <div>
+                          <h5 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Coordenação do Curso</h5>
+                          <p className="text-sm font-bold text-zinc-900">{coordinator ? coordinator.name : 'Nenhum coordenador definido'}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase">Trocar:</label>
+                          <select 
+                            value={course.coordinatorId || ''}
+                            onChange={(e) => onUpdateCourse({...course, coordinatorId: e.target.value})}
+                            className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-[10px] font-bold text-zinc-700 outline-none"
+                          >
+                            <option value="">Selecionar Coordenador...</option>
+                            {getAvailableCoordinators(course.coordinatorId).map(t => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                          <BookPlus size={14} /> Matriz Curricular
+                        </h5>
+                        <button onClick={() => setAddingSubjectTo(course.id)} className="text-primary text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 hover:underline underline-offset-4">
+                          <Plus size={12} /> Add Disciplina
+                        </button>
+                      </div>
+
+                      {addingSubjectTo === course.id && (
+                        <div className="p-4 bg-white border border-zinc-200 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-3 items-end shadow-sm animate-in zoom-in-95 duration-200">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Nome</label>
+                            <input value={newSubject.name} onChange={e => setNewSubject({...newSubject, name: e.target.value})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none focus:border-primary/30" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Carga (h)</label>
+                            <input type="number" value={newSubject.workload} onChange={e => setNewSubject({...newSubject, workload: parseInt(e.target.value)})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Período</label>
+                            <input type="number" value={newSubject.period} onChange={e => setNewSubject({...newSubject, period: parseInt(e.target.value)})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none" />
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => { onAddSubject(newSubject.name, newSubject.workload, course.id, newSubject.period, newSubject.type); setAddingSubjectTo(null); }} className="flex-1 bg-primary text-white h-8 rounded text-[10px] font-bold uppercase tracking-widest">Salvar</button>
+                            <button onClick={() => setAddingSubjectTo(null)} className="flex-1 bg-zinc-100 text-zinc-500 h-8 rounded text-[10px] font-bold uppercase tracking-widest">Sair</button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {subjects.filter(s => s.courseId === course.id).sort((a,b) => a.period - b.period).map(sub => (
+                          <div key={sub.id} className="bg-white p-3 border border-zinc-200 rounded-lg flex items-center justify-between group/sub hover:border-primary/20 transition-all">
+                            <div>
+                              <p className="text-xs font-bold text-zinc-800">{sub.name}</p>
+                              <p className="text-[9px] text-zinc-400 mt-0.5 font-sans uppercase font-medium">{sub.period}º Período • {sub.workload}h</p>
+                            </div>
+                            <button className="text-zinc-200 hover:text-alert opacity-0 group-hover/sub:opacity-100 transition-all">
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {subjects.filter(s => s.courseId === course.id).length === 0 && !addingSubjectTo && (
+                        <div className="text-center py-8">
+                          <p className="text-xs text-zinc-400 italic">Nenhuma disciplina cadastrada.</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        }) : (
           <div className="px-6 py-16 text-center">
             <BookOpen className="mx-auto text-zinc-200 mb-4" size={32} />
             <p className="text-sm font-medium text-zinc-400 font-sans italic tracking-tight">A base de cursos está vazia.</p>
@@ -931,7 +1043,7 @@ const ReportsView = () => (
 const SettingsView = () => (
   <div className="space-y-8 animate-in fade-in duration-500">
     <header>
-      <h1 className="text-2xl font-bold text-zinc-900">Configurações do Campus</h1>
+      <h1 className="text-2xl font-bold text-zinc-900">Cronograma do Campus</h1>
       <p className="text-zinc-500 text-sm">Ajustes globais do sistema.</p>
     </header>
 
@@ -1015,6 +1127,10 @@ export default function App() {
     setSubjects([...subjects, { id: Date.now().toString(), name, workload, courseId, period, type, color: PASTEL_COLORS[colorIndex] }]);
   };
 
+  const updateCourse = (course: Course) => {
+    setCourses(courses.map(c => c.id === course.id ? course : c));
+  };
+
   const addTeacher = (data: any) => {
     setTeachers([...teachers, {
       ...data,
@@ -1053,7 +1169,7 @@ export default function App() {
           <SidebarItem icon={Building2} label="Cursos e Disciplinas" active={currentView === 'courses' && !selectedTeacherId} onClick={() => { setCurrentView('courses'); setSelectedTeacherId(null); }} />
           <SidebarItem icon={Users} label="Docentes" active={(currentView === 'teachers' || !!selectedTeacherId) && !(selectedTeacherId === session.user?.id)} onClick={() => { setCurrentView('teachers'); setSelectedTeacherId(null); }} />
           <SidebarItem icon={FileText} label="Relatórios" active={currentView === 'reports' && !selectedTeacherId} onClick={() => { setCurrentView('reports'); setSelectedTeacherId(null); }} />
-          <SidebarItem icon={Settings} label="Configurações" active={currentView === 'settings' && !selectedTeacherId} onClick={() => { setCurrentView('settings'); setSelectedTeacherId(null); }} />
+          <SidebarItem icon={Settings} label="Cronograma" active={currentView === 'settings' && !selectedTeacherId} onClick={() => { setCurrentView('settings'); setSelectedTeacherId(null); }} />
         </nav>
 
         <div className="p-4 mt-auto border-t border-zinc-100">
@@ -1101,11 +1217,12 @@ export default function App() {
                     stats={{ teachers: teachers.length, courses: courses.length, subjects: subjects.length }} 
                     courses={courses} 
                     subjects={subjects}
+                    teachers={teachers}
                     schedules={schedules}
                     onAddSchedule={addSchedule}
                   />
                 )}
-                {currentView === 'courses' && <CoursesView courses={courses} teachers={teachers} subjects={subjects} onAddCourse={addCourse} onAddSubject={addSubject} />}
+                {currentView === 'courses' && <CoursesView courses={courses} teachers={teachers} subjects={subjects} onAddCourse={addCourse} onAddSubject={addSubject} onUpdateCourse={updateCourse} />}
                 {currentView === 'teachers' && <TeachersView teachers={teachers} onAddTeacher={addTeacher} onSelectTeacher={setSelectedTeacherId} onDeleteTeacher={deleteTeacher} />}
                 {currentView === 'reports' && <ReportsView />}
                 {currentView === 'settings' && <SettingsView />}
