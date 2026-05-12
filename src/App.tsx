@@ -1,0 +1,1119 @@
+import React, { useState, useMemo } from 'react';
+import { 
+  BookOpen, 
+  Users, 
+  LayoutDashboard, 
+  Building2, 
+  Settings, 
+  FileText, 
+  LogOut, 
+  Search, 
+  Plus, 
+  Filter, 
+  MoreVertical, 
+  Trash2, 
+  Edit3, 
+  Eye, 
+  CheckCircle2, 
+  AlertCircle, 
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  UserPlus,
+  BookPlus,
+  Calendar,
+  Clock,
+  Activity,
+  Download
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Level, 
+  User, 
+  UserRole, 
+  WorkRegime, 
+  LeaveType, 
+  Course, 
+  CourseType, 
+  Subject,
+  ScheduleEntry
+} from './types';
+
+// --- Constants & Mock Data ---
+
+const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+const TIME_SLOTS = [
+  { id: 'm1', label: '07:25 às 08:25', period: 'Manhã' },
+  { id: 'm2', label: '08:25 às 09:25', period: 'Manhã' },
+  { id: 'm-int', label: '09:25 às 09:45', period: 'Intervalo', isBreak: true },
+  { id: 'm3', label: '09:45 às 10:45', period: 'Manhã' },
+  { id: 'm4', label: '10:45 às 11:45', period: 'Manhã' },
+  { id: 'lunch', label: '11:45 às 13:00', period: 'Almoço', isBreak: true },
+  { id: 't1', label: '13:00 às 14:00', period: 'Tarde' },
+  { id: 't2', label: '14:00 às 15:00', period: 'Tarde' },
+  { id: 't-int', label: '15:00 às 15:20', period: 'Intervalo', isBreak: true },
+  { id: 't3', label: '15:20 às 16:25', period: 'Tarde' },
+  { id: 't4', label: '16:25 às 17:30', period: 'Tarde' },
+];
+
+const PASTEL_COLORS = [
+  'bg-rose-100 border-rose-200 text-rose-700',
+  'bg-blue-100 border-blue-200 text-blue-700',
+  'bg-emerald-100 border-emerald-200 text-emerald-700',
+  'bg-amber-100 border-amber-200 text-amber-700',
+  'bg-indigo-100 border-indigo-200 text-indigo-700',
+  'bg-orange-100 border-orange-200 text-orange-700',
+  'bg-purple-100 border-purple-200 text-purple-700',
+  'bg-teal-100 border-teal-200 text-teal-700',
+];
+
+const INITIAL_TEACHERS: User[] = [
+  {
+    id: '1',
+    name: 'Dr. Ricardo Silva',
+    email: 'ricardo.silva@ifce.edu.br',
+    registration: '1122334',
+    role: 'Professor',
+    campus: 'Tauá',
+    regime: WorkRegime.DE,
+    leaveType: LeaveType.Nenhum,
+    hasReducedWorkload: false,
+    cargaHoraria: 12,
+    disciplinasMinistradas: ['s1'],
+    areaAtuacao: 'Engenharia de Software'
+  }
+];
+
+const INITIAL_COURSES: Course[] = [
+  {
+    id: 'c1',
+    name: 'Sistemas de Informação',
+    campus: 'Tauá',
+    level: Level.Superior,
+    type: CourseType.Graduacao,
+    durationType: 'Semestral'
+  },
+  {
+    id: 'c2',
+    name: 'Redes de Computadores',
+    campus: 'Tauá',
+    level: Level.Superior,
+    type: CourseType.Graduacao,
+    durationType: 'Semestral'
+  }
+];
+
+const INITIAL_SUBJECTS: Subject[] = [
+  {
+    id: 's1',
+    name: 'Banco de Dados I',
+    workload: 80,
+    courseId: 'c1',
+    period: 3,
+    type: 'Obrigatória',
+    color: PASTEL_COLORS[0]
+  },
+  {
+    id: 's2',
+    name: 'Programação Orientada a Objetos',
+    workload: 80,
+    courseId: 'c1',
+    period: 3,
+    type: 'Obrigatória',
+    color: PASTEL_COLORS[1]
+  },
+  {
+    id: 's3',
+    name: 'Estrutura de Dados',
+    workload: 80,
+    courseId: 'c1',
+    period: 3,
+    type: 'Obrigatória',
+    color: PASTEL_COLORS[2]
+  }
+];
+
+const INITIAL_SCHEDULES: ScheduleEntry[] = [
+  { id: 'sc1', courseId: 'c1', period: 3, dayOfWeek: 'Segunda', timeSlotId: 'm1', subjectId: 's1' },
+  { id: 'sc2', courseId: 'c1', period: 3, dayOfWeek: 'Segunda', timeSlotId: 'm2', subjectId: 's1' },
+  { id: 'sc3', courseId: 'c1', period: 3, dayOfWeek: 'Terça', timeSlotId: 'm1', subjectId: 's2' },
+  { id: 'sc4', courseId: 'c1', period: 3, dayOfWeek: 'Terça', timeSlotId: 'm2', subjectId: 's2' },
+];
+
+const Badge = ({ children, variant = 'default' }: { children: React.ReactNode, variant?: 'default' | 'success' | 'alert' | 'highlight' }) => {
+  const styles = {
+    default: 'bg-zinc-100 text-zinc-500 border-zinc-200',
+    success: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    alert: 'bg-rose-50 text-rose-600 border-rose-100',
+    highlight: 'bg-primary/10 text-primary border-primary/20'
+  };
+  
+  return (
+    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${styles[variant]}`}>
+      {children}
+    </span>
+  );
+};
+
+const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick: () => void }) => (
+  <button 
+    onClick={onClick}
+    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+      active 
+        ? 'bg-primary text-white shadow-sm' 
+        : 'text-zinc-600 hover:bg-zinc-50 hover:text-primary'
+    }`}
+  >
+    <Icon size={18} />
+    <span className="text-sm font-medium">{label}</span>
+  </button>
+);
+
+// --- Core Logic Helpers ---
+
+const getWorkloadLimit = (role: UserRole): number => {
+  if (['Coordenador', 'Diretor', 'Vice-Diretor'].includes(role)) return 10;
+  return 20; // Professor
+};
+
+// --- View Components ---
+
+const LoginView = ({ onLogin }: { onLogin: (email: string, pass: string) => void }) => {
+  const [email, setEmail] = useState('admin@ifce.edu.br');
+  const [pass, setPass] = useState('123456');
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-6">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md bg-white p-8 rounded-xl border border-zinc-200 shadow-xl space-y-8"
+      >
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+            <BookOpen size={32} />
+          </div>
+          <div className="text-center">
+            <h1 className="text-xl font-bold text-zinc-900">Gestão Acadêmica</h1>
+            <p className="text-xs text-primary font-bold uppercase tracking-wider">Campus Tauá</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">E-mail Institucional</label>
+            <input 
+              type="text" 
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full h-12 bg-zinc-50 border border-zinc-100 rounded-xl px-4 text-sm focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+              placeholder="seu.nome@ifce.edu.br"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Senha de Acesso</label>
+            <input 
+              type="password" 
+              value={pass}
+              onChange={e => setPass(e.target.value)}
+              className="w-full h-12 bg-zinc-50 border border-zinc-100 rounded-xl px-4 text-sm focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+              placeholder="••••••••"
+            />
+          </div>
+        </div>
+
+        <button 
+          onClick={() => onLogin(email, pass)}
+          className="w-full h-12 bg-primary text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-primary/20"
+        >
+          Entrar no Sistema
+        </button>
+      </motion.div>
+    </div>
+  );
+};
+
+const DashboardView = ({ 
+  user, 
+  stats, 
+  courses, 
+  subjects, 
+  schedules,
+  onAddSchedule
+}: { 
+  user: User, 
+  stats: any, 
+  courses: Course[], 
+  subjects: Subject[],
+  schedules: ScheduleEntry[],
+  onAddSchedule: (s: Omit<ScheduleEntry, 'id'>) => void
+}) => {
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [selectedPeriod, setSelectedPeriod] = useState<number>(1);
+
+  const course = useMemo(() => courses.find(c => c.id === selectedCourseId), [courses, selectedCourseId]);
+  const availablePeriods = useMemo(() => {
+    if (!course) return [];
+    // Just a placeholder for periods, IFCE courses usually have many
+    return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  }, [course]);
+
+  const courseSubjects = useMemo(() => subjects.filter(s => s.courseId === selectedCourseId), [subjects, selectedCourseId]);
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <header>
+        <h1 className="text-2xl font-bold text-zinc-900">
+          Gestão Acadêmica
+        </h1>
+        <p className="text-zinc-500 text-sm">Bem-vindo, {user.name}. Campus Tauá.</p>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[
+          { label: 'Total Docentes', value: stats.teachers, icon: Users },
+          { label: 'Total Cursos', value: stats.courses, icon: BookOpen },
+          { label: 'Total Disciplinas', value: stats.subjects, icon: FileText }
+        ].map((stat, i) => (
+          <div key={i} className="bg-white p-6 rounded-lg border border-zinc-200 flex items-center gap-4 shadow-sm">
+            <div className="w-12 h-12 bg-primary-light text-primary rounded-lg flex items-center justify-center">
+              <stat.icon size={24} />
+            </div>
+            <div>
+              <p className="text-sm text-zinc-500 font-medium">{stat.label}</p>
+              <p className="text-2xl font-bold text-zinc-900">{stat.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-zinc-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-bold text-zinc-900">Grade Semanal</h3>
+            <p className="text-xs text-zinc-500 font-sans">Visualize o horário das turmas por período.</p>
+          </div>
+          <div className="flex gap-3">
+            <select 
+              value={selectedCourseId}
+              onChange={e => setSelectedCourseId(e.target.value)}
+              className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold text-zinc-700 outline-none focus:ring-1 focus:ring-primary/20"
+            >
+              <option value="">Selecionar Curso...</option>
+              {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {selectedCourseId && (
+              <select 
+                value={selectedPeriod}
+                onChange={e => setSelectedPeriod(parseInt(e.target.value))}
+                className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold text-zinc-700 outline-none"
+              >
+                {availablePeriods.map(p => <option key={p} value={p}>{p}º Período</option>)}
+              </select>
+            )}
+          </div>
+        </div>
+
+        {selectedCourseId ? (
+          <div className="p-6 overflow-x-auto">
+            <div className="min-w-[800px]">
+              <div className="grid grid-cols-7 gap-4 mb-4">
+                <div className="w-24"></div>
+                {DAYS.map(day => (
+                  <div key={day} className="text-center">
+                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{day}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-4">
+                {TIME_SLOTS.map(slot => (
+                  <div key={slot.id} className="grid grid-cols-7 gap-4">
+                    <div className="w-24 flex flex-col justify-center">
+                      <p className="text-[10px] font-bold text-zinc-900 leading-none">{slot.label.split(' às ')[0]}</p>
+                      <p className="text-[9px] text-zinc-400 font-medium mt-1 uppercase">{slot.period}</p>
+                    </div>
+                    {DAYS.map(day => {
+                      const entryInRange = schedules.find(s => 
+                        s.courseId === selectedCourseId && 
+                        s.period === selectedPeriod && 
+                        s.dayOfWeek === day && 
+                        s.timeSlotId === slot.id
+                      );
+                      const subject = entryInRange ? subjects.find(s => s.id === entryInRange.subjectId) : null;
+
+                      if (slot.isBreak) {
+                        return (
+                          <div key={day} className="h-10 bg-zinc-50/50 border border-zinc-100 border-dashed rounded-lg flex items-center justify-center">
+                            <span className="text-[8px] font-bold text-zinc-300 uppercase tracking-widest">{slot.period}</span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div 
+                          key={day}
+                          className={`min-h-[60px] rounded-xl border p-2 flex flex-col justify-center shadow-sm relative group cursor-pointer transition-all ${
+                            subject 
+                              ? (subject.color || PASTEL_COLORS[0])
+                              : 'bg-zinc-50/30 border-zinc-100 hover:border-zinc-200'
+                          }`}
+                        >
+                          {subject ? (
+                            <>
+                              <p className="text-[10px] font-bold leading-tight">{subject.name}</p>
+                              <div className="mt-1 flex items-center justify-between">
+                                <span className="text-[8px] font-bold opacity-60 uppercase">IFCE</span>
+                                <button 
+                                  onClick={() => {
+                                    // Remove logic could be here if we were doing full state mgmt
+                                  }}
+                                  className="text-[8px] font-bold opacity-0 group-hover:opacity-100 hover:text-alert"
+                                >
+                                  Remover
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="opacity-0 group-hover:opacity-100 flex flex-col items-center gap-1">
+                              <select 
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    onAddSchedule({
+                                      courseId: selectedCourseId,
+                                      period: selectedPeriod,
+                                      dayOfWeek: day,
+                                      timeSlotId: slot.id,
+                                      subjectId: e.target.value
+                                    });
+                                  }
+                                }}
+                                className="w-full bg-transparent text-[8px] font-bold uppercase tracking-tight text-zinc-400 outline-none"
+                              >
+                                <option value="">+ Alocar</option>
+                                {courseSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="py-20 flex flex-col items-center justify-center text-zinc-300 gap-4">
+            <Calendar size={48} className="opacity-20" />
+            <p className="text-sm font-bold uppercase tracking-widest">Selecione um curso para visualizar a grade</p>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-lg border border-zinc-200 overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-zinc-900">Resumo de Cargas Horárias</h3>
+          <Activity size={18} className="text-zinc-300" />
+        </div>
+        <table className="w-full">
+          <thead>
+            <tr className="bg-zinc-50 text-left border-b border-zinc-200">
+              <th className="px-6 py-3 text-xs font-bold text-zinc-500 uppercase tracking-wider">Curso</th>
+              <th className="px-6 py-3 text-xs font-bold text-zinc-500 uppercase tracking-wider">Qtd. Disciplinas</th>
+              <th className="px-6 py-3 text-xs font-bold text-zinc-500 uppercase tracking-wider">Carga Total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-200">
+            {courses.length > 0 ? courses.map(course => {
+              const courseSubjects = subjects.filter(s => s.courseId === course.id);
+              const totalWorkload = courseSubjects.reduce((acc, curr) => acc + curr.workload, 0);
+              return (
+                <tr key={course.id} className="hover:bg-zinc-50 transition-colors">
+                  <td className="px-6 py-4 text-sm font-medium text-zinc-900">{course.name}</td>
+                  <td className="px-6 py-4 text-sm text-zinc-500">{courseSubjects.length}</td>
+                  <td className="px-6 py-4 text-sm font-bold text-primary">{totalWorkload}h</td>
+                </tr>
+              );
+            }) : (
+              <tr>
+                <td colSpan={3} className="px-6 py-12 text-center text-zinc-400 text-sm font-medium">
+                  Nenhum curso cadastrado ainda.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const CoursesView = ({ 
+  courses, 
+  teachers, 
+  subjects, 
+  onAddCourse, 
+  onAddSubject 
+}: { 
+  courses: Course[], 
+  teachers: User[], 
+  subjects: Subject[], 
+  onAddCourse: (name: string, level: Level, type: CourseType, duration: 'Semestral' | 'Anual') => void,
+  onAddSubject: (name: string, workload: number, courseId: string, period: number, type: 'Obrigatória' | 'Optativa') => void
+}) => {
+  const [isAddingCourse, setIsAddingCourse] = useState(false);
+  const [addingSubjectTo, setAddingSubjectTo] = useState<string | null>(null);
+  const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const [newCourse, setNewCourse] = useState({ 
+    name: '', 
+    level: Level.Superior, 
+    type: CourseType.Graduacao, 
+    durationType: 'Semestral' as 'Semestral' | 'Anual' 
+  });
+  
+  const [newSubject, setNewSubject] = useState({ 
+    name: '', 
+    workload: 80, 
+    period: 1, 
+    type: 'Obrigatória' as 'Obrigatória' | 'Optativa' 
+  });
+
+  const filteredCourses = useMemo(() => {
+    return courses.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [courses, searchTerm]);
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <header className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Cursos e Disciplinas</h1>
+          <p className="text-zinc-500 text-sm font-sans">Gerencie a matriz curricular do campus.</p>
+        </div>
+        <button 
+          onClick={() => setIsAddingCourse(true)}
+          className="bg-primary text-white px-4 py-2 rounded text-sm font-medium hover:bg-opacity-90 transition-all flex items-center gap-2"
+        >
+          <Plus size={18} /> Novo Curso
+        </button>
+      </header>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-2.5 text-zinc-400" size={16} />
+        <input 
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          placeholder="Filtrar cursos..." 
+          className="w-full bg-white h-10 pl-10 pr-4 rounded border border-zinc-200 text-sm outline-none focus:border-primary/30"
+        />
+      </div>
+
+      {isAddingCourse && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 border border-zinc-200 rounded-xl space-y-6 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Nome</label>
+              <input value={newCourse.name} onChange={e => setNewCourse({...newCourse, name: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Tipo</label>
+              <select value={newCourse.type} onChange={e => setNewCourse({...newCourse, type: e.target.value as CourseType})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none">
+                {Object.values(CourseType).map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Nível</label>
+              <select value={newCourse.level} onChange={e => setNewCourse({...newCourse, level: e.target.value as Level})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none">
+                {Object.values(Level).map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Duração</label>
+              <select value={newCourse.durationType} onChange={e => setNewCourse({...newCourse, durationType: e.target.value as 'Semestral' | 'Anual'})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none">
+                <option value="Semestral">Semestral</option>
+                <option value="Anual">Anual</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button 
+              onClick={() => { onAddCourse(newCourse.name, newCourse.level, newCourse.type, newCourse.durationType); setIsAddingCourse(false); }}
+              className="bg-primary text-white px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider"
+            >
+              Confirmar
+            </button>
+            <button onClick={() => setIsAddingCourse(false)} className="text-zinc-500 text-xs font-bold uppercase tracking-wider px-2 hover:text-zinc-900 transition-colors">Cancelar</button>
+          </div>
+        </motion.div>
+      )}
+
+      <div className="border border-zinc-200 rounded-xl divide-y divide-zinc-100 bg-white shadow-sm overflow-hidden font-sans">
+        {filteredCourses.length > 0 ? filteredCourses.map(course => (
+          <div key={course.id} className="group">
+            <div 
+              className="p-4 flex items-center justify-between cursor-pointer hover:bg-zinc-50 transition-colors"
+              onClick={() => setExpandedCourse(expandedCourse === course.id ? null : course.id)}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-[10px] ${course.level === Level.Superior ? 'bg-primary/10 text-primary' : 'bg-zinc-100 text-zinc-400'}`}>
+                  {course.durationType === 'Semestral' ? 'SEM' : 'ANO'}
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-zinc-900 leading-none">{course.name}</h4>
+                  <p className="text-[10px] text-zinc-500 mt-1 uppercase tracking-tight font-medium">{course.level} • {course.type}</p>
+                </div>
+              </div>
+              <ChevronRight size={18} className={`text-zinc-300 transition-transform ${expandedCourse === course.id ? 'rotate-90 text-primary' : ''}`} />
+            </div>
+
+            <AnimatePresence>
+              {expandedCourse === course.id && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-zinc-50/30 border-t border-zinc-100">
+                  <div className="p-6 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                        <BookPlus size={14} /> Matriz Curricular
+                      </h5>
+                      <button onClick={() => setAddingSubjectTo(course.id)} className="text-primary text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 hover:underline underline-offset-4">
+                        <Plus size={12} /> Add Disciplina
+                      </button>
+                    </div>
+
+                    {addingSubjectTo === course.id && (
+                      <div className="p-4 bg-white border border-zinc-200 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-3 items-end shadow-sm animate-in zoom-in-95 duration-200">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Nome</label>
+                          <input value={newSubject.name} onChange={e => setNewSubject({...newSubject, name: e.target.value})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none focus:border-primary/30" />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Carga (h)</label>
+                          <input type="number" value={newSubject.workload} onChange={e => setNewSubject({...newSubject, workload: parseInt(e.target.value)})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none" />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Período</label>
+                          <input type="number" value={newSubject.period} onChange={e => setNewSubject({...newSubject, period: parseInt(e.target.value)})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none" />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => { onAddSubject(newSubject.name, newSubject.workload, course.id, newSubject.period, newSubject.type); setAddingSubjectTo(null); }} className="flex-1 bg-primary text-white h-8 rounded text-[10px] font-bold uppercase tracking-widest">Salvar</button>
+                          <button onClick={() => setAddingSubjectTo(null)} className="flex-1 bg-zinc-100 text-zinc-500 h-8 rounded text-[10px] font-bold uppercase tracking-widest">Sair</button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {subjects.filter(s => s.courseId === course.id).sort((a,b) => a.period - b.period).map(sub => (
+                        <div key={sub.id} className="bg-white p-3 border border-zinc-200 rounded-lg flex items-center justify-between group/sub hover:border-primary/20 transition-all">
+                          <div>
+                            <p className="text-xs font-bold text-zinc-800">{sub.name}</p>
+                            <p className="text-[9px] text-zinc-400 mt-0.5 font-sans uppercase font-medium">{sub.period}º Período • {sub.workload}h</p>
+                          </div>
+                          <button className="text-zinc-200 hover:text-alert opacity-0 group-hover/sub:opacity-100 transition-all">
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {subjects.filter(s => s.courseId === course.id).length === 0 && !addingSubjectTo && (
+                      <div className="text-center py-8">
+                        <p className="text-xs text-zinc-400 italic">Nenhuma disciplina cadastrada.</p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )) : (
+          <div className="px-6 py-16 text-center">
+            <BookOpen className="mx-auto text-zinc-200 mb-4" size={32} />
+            <p className="text-sm font-medium text-zinc-400 font-sans italic tracking-tight">A base de cursos está vazia.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const TeacherProfileView = ({ 
+  teacher, 
+  onBack, 
+  onUpdate 
+}: { 
+  teacher: User, 
+  onBack: () => void, 
+  onUpdate: (u: User) => void 
+}) => {
+  const limit = getWorkloadLimit(teacher.role);
+  
+  return (
+    <div className="space-y-10 animate-in slide-in-from-right duration-500">
+      <header className="flex items-center gap-6">
+        <button onClick={onBack} className="p-3 bg-white border border-zinc-100 rounded-2xl text-zinc-400 hover:text-zinc-900 transition-all shadow-sm">
+          <ArrowLeft size={20} />
+        </button>
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">{teacher.name}</h1>
+            <Badge variant="highlight">{teacher.role}</Badge>
+          </div>
+          <p className="text-zinc-400 text-xs font-semibold uppercase tracking-widest">{teacher.registration} • {teacher.campus}</p>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="lg:col-span-2 space-y-8">
+           <div className="bg-white p-10 rounded-[2.5rem] border border-zinc-100 shadow-sm space-y-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 border-b border-zinc-50 pb-10">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">Área de Atuação</p>
+                  <p className="text-base font-bold text-zinc-800">{teacher.areaAtuacao || 'Não definida'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">Vínculo Institucional</p>
+                  <p className="text-base font-bold text-zinc-800">{teacher.regime}</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">Alocações no Semestre</h4>
+                  <button className="text-primary font-bold text-[10px] uppercase tracking-widest flex items-center gap-1 hover:underline">
+                    <Plus size={14} /> Nova Alocação
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {teacher.disciplinasMinistradas.length === 0 ? (
+                    <div className="p-10 border-2 border-dashed border-zinc-50 rounded-xl text-center">
+                      <p className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Sem disciplinas alocadas</p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+           </div>
+        </div>
+
+        <aside className="space-y-8">
+           <div className="bg-primary p-10 rounded-[2.5rem] text-white shadow-xl shadow-primary/20 relative overflow-hidden">
+              <Activity className="absolute -right-4 -bottom-4 text-white/10" size={140} />
+              <div className="relative z-10 space-y-4">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Encargo Didático Semanal</p>
+                <div className="flex items-baseline gap-2">
+                  <h4 className="text-6xl font-bold tracking-tighter leading-none">{teacher.cargaHoraria}h</h4>
+                  <span className="text-xl font-bold opacity-30">/ {limit}h</span>
+                </div>
+                <div className="pt-4 space-y-4">
+                   <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(teacher.cargaHoraria / limit) * 100}%` }}
+                        className="h-full bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,0.5)]"
+                      />
+                   </div>
+                   <p className="text-[9px] font-bold uppercase tracking-widest leading-relaxed">
+                     O {teacher.role.toLowerCase()} possui um limite normativo de {limit} horas aula semanais.
+                   </p>
+                </div>
+              </div>
+           </div>
+
+           <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm space-y-6">
+              <div className="flex items-center gap-3">
+                <Settings size={20} className="text-zinc-400" />
+                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Ações Rápidas</h4>
+              </div>
+              <div className="flex flex-col gap-2">
+                <button className="w-full h-11 bg-zinc-50 rounded-xl text-[10px] font-bold uppercase tracking-widest text-zinc-600 hover:bg-primary hover:text-white transition-all">Alterar Status</button>
+                <button className="w-full h-11 bg-rose-50 rounded-xl text-[10px] font-bold uppercase tracking-widest text-rose-500 hover:bg-rose-500 hover:text-white transition-all">Remover do Campus</button>
+              </div>
+           </div>
+        </aside>
+      </div>
+    </div>
+  );
+};
+
+const TeachersView = ({ 
+  teachers, 
+  onAddTeacher,
+  onSelectTeacher,
+  onDeleteTeacher
+}: { 
+  teachers: User[], 
+  onAddTeacher: (data: any) => void,
+  onSelectTeacher: (id: string) => void,
+  onDeleteTeacher: (id: string) => void
+}) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('Todos');
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    email: '', 
+    registration: '', 
+    ingressoYear: '', 
+    birthDate: '', 
+    areaAtuacao: '',
+    regime: WorkRegime.DE,
+    leaveType: LeaveType.Nenhum,
+    hasReducedWorkload: false,
+    role: 'Professor' as UserRole
+  });
+
+  const filteredTeachers = useMemo(() => {
+    return teachers.filter(t => {
+      const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           t.registration.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRole = roleFilter === 'Todos' || t.role === roleFilter;
+      return matchesSearch && matchesRole;
+    });
+  }, [teachers, searchTerm, roleFilter]);
+
+  const handleSubmit = () => {
+    if (!formData.name || !formData.email || !formData.registration) return;
+    onAddTeacher(formData);
+    setFormData({
+      name: '', email: '', registration: '', ingressoYear: '', birthDate: '', 
+      areaAtuacao: '', regime: WorkRegime.DE, leaveType: LeaveType.Nenhum, 
+      hasReducedWorkload: false, role: 'Professor'
+    });
+    setIsAdding(false);
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <header className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Docentes</h1>
+          <p className="text-zinc-500 text-sm font-sans">Gestão de professores e encargos didáticos.</p>
+        </div>
+        <button 
+          onClick={() => setIsAdding(true)}
+          className="bg-primary text-white px-4 py-2 rounded text-sm font-medium hover:bg-opacity-90 transition-all flex items-center gap-2"
+        >
+          <UserPlus size={18} /> Novo Docente
+        </button>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="relative md:col-span-3">
+          <Search className="absolute left-3 top-2.5 text-zinc-400" size={16} />
+          <input 
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Buscar por nome ou SIAPE..." 
+            className="w-full bg-white h-10 pl-10 pr-4 rounded border border-zinc-200 text-sm outline-none focus:border-primary/30"
+          />
+        </div>
+        <select 
+          value={roleFilter}
+          onChange={e => setRoleFilter(e.target.value)}
+          className="bg-white px-4 rounded border border-zinc-200 text-sm outline-none focus:border-primary/30 h-10"
+        >
+          <option value="Todos">Todas as Funções</option>
+          <option value="Professor">Professores</option>
+          <option value="Coordenador">Coordenadores</option>
+          <option value="Diretor">Diretores</option>
+        </select>
+      </div>
+
+      {isAdding && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 border border-zinc-200 rounded-xl space-y-6 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Nome Completo</label>
+              <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">E-mail</label>
+              <input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Matrícula SIAPE</label>
+              <input value={formData.registration} onChange={e => setFormData({...formData, registration: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" placeholder="Ex: 1234567" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Ano Egresso</label>
+              <input type="number" value={formData.ingressoYear} onChange={e => setFormData({...formData, ingressoYear: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" placeholder="Ex: 2020" />
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={handleSubmit} className="bg-primary text-white px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider">Cadastrar</button>
+            <button onClick={() => setIsAdding(false)} className="text-zinc-500 text-xs font-bold uppercase tracking-wider px-2 hover:text-zinc-900 transition-colors">Cancelar</button>
+          </div>
+        </motion.div>
+      )}
+
+      <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden shadow-sm">
+        <table className="w-full font-sans">
+          <thead>
+            <tr className="bg-zinc-50 text-left border-b border-zinc-100">
+              <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Docente</th>
+              <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider text-center">Ano Egresso/SIAPE</th>
+              <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider text-center">Carga</th>
+              <th className="px-6 py-4 text-right text-xs font-bold text-zinc-500 uppercase tracking-wider">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-50">
+            {filteredTeachers.length > 0 ? filteredTeachers.map(teacher => (
+              <tr key={teacher.id} className="hover:bg-zinc-50/50 transition-colors">
+                <td className="px-6 py-4">
+                  <div className="flex flex-col">
+                    <p className="text-sm font-bold text-zinc-900 leading-none">{teacher.name}</p>
+                    <p className="text-[10px] text-zinc-400 mt-1 font-medium">{teacher.email}</p>
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-center">
+                  <p className="text-xs text-zinc-600 font-medium">{teacher.ingressoYear || 'N/A'}</p>
+                  <p className="text-[10px] text-zinc-400 uppercase tracking-tight font-medium mt-0.5">{teacher.registration}</p>
+                </td>
+                <td className="px-6 py-4 text-center">
+                  <span className={`text-sm font-bold ${teacher.cargaHoraria > 20 ? 'text-alert' : 'text-zinc-900'}`}>{teacher.cargaHoraria}h</span>
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end gap-2 text-zinc-300">
+                    <button onClick={() => onSelectTeacher(teacher.id)} className="p-2 hover:text-primary transition-colors" title="Visualizar Perfil">
+                      <Eye size={18} />
+                    </button>
+                    <button className="p-2 hover:text-zinc-900 transition-colors" title="Editar">
+                      <Edit3 size={18} />
+                    </button>
+                    <button onClick={() => onDeleteTeacher(teacher.id)} className="p-2 hover:text-alert transition-colors" title="Excluir">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan={4} className="px-6 py-16 text-center text-zinc-400 text-sm font-medium italic">
+                  Nenhum docente encontrado nos registros.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const ReportsView = () => (
+  <div className="space-y-8 animate-in fade-in duration-500">
+    <header>
+      <h1 className="text-2xl font-bold text-zinc-900 font-sans">Relatórios e Exportação</h1>
+      <p className="text-zinc-500 text-sm font-sans mt-1">Gere documentos oficiais e visões consolidadas do campus.</p>
+    </header>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[
+        { title: 'Grade de Horários', description: 'Exportação da grade unificada por curso.', icon: Calendar },
+        { title: 'Lotação Docente', description: 'Relatório detalhado de encargos por docente.', icon: Users },
+        { title: 'Quadro de Vagas', description: 'Análise de disciplinas sem docentes vinculados.', icon: AlertCircle },
+      ].map((report, i) => (
+        <div key={i} className="bg-white p-6 rounded-lg border border-zinc-200 hover:border-primary/30 transition-all cursor-pointer group shadow-sm">
+          <div className="w-10 h-10 bg-zinc-50 rounded-lg flex items-center justify-center text-zinc-400 group-hover:bg-primary group-hover:text-white transition-all mb-4">
+            <report.icon size={20} />
+          </div>
+          <h3 className="font-bold text-zinc-900 mb-1">{report.title}</h3>
+          <p className="text-xs text-zinc-500 leading-relaxed font-sans">{report.description}</p>
+          <button className="mt-4 flex items-center gap-2 text-[10px] font-bold text-primary uppercase tracking-widest group-hover:translate-x-1 transition-transform">
+            <Download size={12} /> Baixar PDF
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const SettingsView = () => (
+  <div className="space-y-8 animate-in fade-in duration-500">
+    <header>
+      <h1 className="text-2xl font-bold text-zinc-900">Configurações do Campus</h1>
+      <p className="text-zinc-500 text-sm">Ajustes globais do sistema.</p>
+    </header>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="bg-white p-6 rounded-lg border border-zinc-200 space-y-6 shadow-sm">
+        <div className="flex items-center gap-3 text-zinc-900">
+          <Clock size={20} className="text-primary" />
+          <h3 className="font-bold">Turnos de Aula</h3>
+        </div>
+        <div className="space-y-3">
+          {[
+            { label: 'Manhã', range: '07:25 às 11:45' },
+            { label: 'Tarde', range: '13:00 às 17:20' },
+            { label: 'Noite', range: '18:20 às 22:40' }
+          ].map(shift => (
+            <div key={shift.label} className="p-4 bg-zinc-50 rounded-lg flex items-center justify-between border border-zinc-100">
+              <span className="text-xs font-bold uppercase text-zinc-400">{shift.label}</span>
+              <span className="text-sm font-medium text-zinc-800">{shift.range}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg border border-zinc-200 flex flex-col justify-center items-center text-center space-y-4 shadow-sm">
+         <div className="w-16 h-16 bg-zinc-50 rounded-lg flex items-center justify-center text-zinc-300">
+           <Activity size={32} />
+         </div>
+         <div>
+           <p className="text-sm font-bold text-zinc-900">Unidade de Tempo</p>
+           <p className="text-2xl font-bold text-primary">50 Minutos / Crédito</p>
+           <p className="text-xs text-zinc-500 mt-2">Métrica normativa oficial do IFCE.</p>
+         </div>
+      </div>
+    </div>
+  </div>
+);
+
+// --- Main App ---
+
+export default function App() {
+  const [session, setSession] = useState<{ user: User | null, isLoggedIn: boolean }>({ user: null, isLoggedIn: false });
+  const [currentView, setCurrentView] = useState<'dashboard' | 'courses' | 'teachers' | 'settings' | 'reports'>('dashboard');
+  const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
+  const [teachers, setTeachers] = useState<User[]>(INITIAL_TEACHERS);
+  const [subjects, setSubjects] = useState<Subject[]>(INITIAL_SUBJECTS);
+  const [schedules, setSchedules] = useState<ScheduleEntry[]>(INITIAL_SCHEDULES);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
+
+  const handleLogin = (email: string, pass: string) => {
+    if (email.includes('admin')) {
+      const mockUser: User = {
+        id: '99',
+        name: 'Administrador Geral',
+        email,
+        role: 'Admin',
+        registration: 'ADMIN01',
+        campus: 'Tauá',
+        regime: WorkRegime.DE,
+        leaveType: LeaveType.Nenhum,
+        hasReducedWorkload: false,
+        cargaHoraria: 20,
+        disciplinasMinistradas: [],
+        areaAtuacao: 'Gestão Educacional'
+      };
+      setSession({ user: mockUser, isLoggedIn: true });
+      // Add admin as a teacher for profile viewing
+      if (!teachers.find(t => t.id === '99')) {
+        setTeachers([...teachers, mockUser]);
+      }
+    }
+  };
+
+  const handleLogout = () => setSession({ user: null, isLoggedIn: false });
+
+  const addCourse = (name: string, level: Level, type: CourseType, durationType: 'Semestral' | 'Anual') => {
+    setCourses([...courses, { id: Date.now().toString(), name, campus: 'Tauá', level, type, durationType }]);
+  };
+
+  const addSubject = (name: string, workload: number, courseId: string, period: number, type: 'Obrigatória' | 'Optativa') => {
+    const colorIndex = subjects.length % PASTEL_COLORS.length;
+    setSubjects([...subjects, { id: Date.now().toString(), name, workload, courseId, period, type, color: PASTEL_COLORS[colorIndex] }]);
+  };
+
+  const addTeacher = (data: any) => {
+    setTeachers([...teachers, {
+      ...data,
+      id: Date.now().toString(),
+      campus: 'Tauá',
+      cargaHoraria: getWorkloadLimit(data.role),
+      disciplinasMinistradas: []
+    }]);
+  };
+
+  const addSchedule = (entry: Omit<ScheduleEntry, 'id'>) => {
+    setSchedules([...schedules, { ...entry, id: Date.now().toString() }]);
+  };
+
+  const deleteTeacher = (id: string) => setTeachers(teachers.filter(t => t.id !== id));
+
+  if (!session.isLoggedIn) return <LoginView onLogin={handleLogin} />;
+
+  return (
+    <div className="flex min-h-screen bg-zinc-50">
+      <aside className="w-64 bg-white border-r border-zinc-200 flex flex-col fixed h-full z-10">
+        <div className="p-8 pb-4">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="bg-primary p-2 rounded-lg text-white">
+              <BookOpen size={24} />
+            </div>
+            <div>
+              <h1 className="font-bold text-zinc-900 leading-none">Gestão Acadêmica</h1>
+              <span className="text-[10px] text-primary font-bold tracking-widest uppercase">Campus Tauá</span>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 px-4 space-y-1">
+          <SidebarItem icon={LayoutDashboard} label="Dashboard" active={currentView === 'dashboard' && !selectedTeacherId} onClick={() => { setCurrentView('dashboard'); setSelectedTeacherId(null); }} />
+          <SidebarItem icon={Building2} label="Cursos e Disciplinas" active={currentView === 'courses' && !selectedTeacherId} onClick={() => { setCurrentView('courses'); setSelectedTeacherId(null); }} />
+          <SidebarItem icon={Users} label="Docentes" active={(currentView === 'teachers' || !!selectedTeacherId) && !(selectedTeacherId === session.user?.id)} onClick={() => { setCurrentView('teachers'); setSelectedTeacherId(null); }} />
+          <SidebarItem icon={FileText} label="Relatórios" active={currentView === 'reports' && !selectedTeacherId} onClick={() => { setCurrentView('reports'); setSelectedTeacherId(null); }} />
+          <SidebarItem icon={Settings} label="Configurações" active={currentView === 'settings' && !selectedTeacherId} onClick={() => { setCurrentView('settings'); setSelectedTeacherId(null); }} />
+        </nav>
+
+        <div className="p-4 mt-auto border-t border-zinc-100">
+          <div 
+            onClick={() => { setSelectedTeacherId(session.user?.id || null); }}
+            className={`flex items-center gap-3 px-4 py-3 mb-2 rounded-lg cursor-pointer transition-all ${selectedTeacherId === session.user?.id ? 'bg-zinc-100 border border-zinc-200' : 'hover:bg-zinc-50'}`}
+          >
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs border border-primary/20">
+              {session.user?.name.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-zinc-900 truncate">{session.user?.name}</p>
+              <p className="text-[10px] text-zinc-500 truncate">{session.user?.role}</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleLogout} 
+            className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-zinc-500 hover:text-alert hover:bg-rose-50 transition-all font-medium text-sm"
+          >
+            <LogOut size={16} /> <span>Sair</span>
+          </button>
+        </div>
+      </aside>
+
+      <main className="flex-1 ml-64 p-10">
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={selectedTeacherId ? `profile-${selectedTeacherId}` : currentView}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {selectedTeacherId ? (
+              <TeacherProfileView 
+                teacher={teachers.find(t => t.id === selectedTeacherId)!} 
+                onBack={() => setSelectedTeacherId(null)}
+                onUpdate={(u) => setTeachers(teachers.map(t => t.id === u.id ? u : t))}
+              />
+            ) : (
+              <>
+                {currentView === 'dashboard' && (
+                  <DashboardView 
+                    user={session.user!} 
+                    stats={{ teachers: teachers.length, courses: courses.length, subjects: subjects.length }} 
+                    courses={courses} 
+                    subjects={subjects}
+                    schedules={schedules}
+                    onAddSchedule={addSchedule}
+                  />
+                )}
+                {currentView === 'courses' && <CoursesView courses={courses} teachers={teachers} subjects={subjects} onAddCourse={addCourse} onAddSubject={addSubject} />}
+                {currentView === 'teachers' && <TeachersView teachers={teachers} onAddTeacher={addTeacher} onSelectTeacher={setSelectedTeacherId} onDeleteTeacher={deleteTeacher} />}
+                {currentView === 'reports' && <ReportsView />}
+                {currentView === 'settings' && <SettingsView />}
+              </>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+}
