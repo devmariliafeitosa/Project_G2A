@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   BookOpen, 
   Users, 
@@ -850,15 +850,20 @@ const TeacherProfileView = ({
 const TeachersView = ({ 
   teachers, 
   onAddTeacher,
+  onUpdateTeacher,
   onSelectTeacher,
   onDeleteTeacher
 }: { 
   teachers: User[], 
   onAddTeacher: (data: any) => void,
+  onUpdateTeacher: (data: any) => void,
   onSelectTeacher: (id: string) => void,
   onDeleteTeacher: (id: string) => void
 }) => {
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ message: string, type: 'success' | 'alert' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('Todos');
   const [formData, setFormData] = useState({ 
@@ -874,6 +879,13 @@ const TeachersView = ({
     role: 'Professor' as UserRole
   });
 
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   const filteredTeachers = useMemo(() => {
     return teachers.filter(t => {
       const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -885,13 +897,47 @@ const TeachersView = ({
 
   const handleSubmit = () => {
     if (!formData.name || !formData.email || !formData.registration) return;
-    onAddTeacher(formData);
+    
+    if (editingId) {
+      onUpdateTeacher({ ...formData, id: editingId });
+      setNotification({ message: 'Docente atualizado com sucesso!', type: 'success' });
+    } else {
+      onAddTeacher(formData);
+      setNotification({ message: 'Docente cadastrado com sucesso!', type: 'success' });
+    }
+
     setFormData({
       name: '', email: '', registration: '', ingressoYear: '', birthDate: '', 
       areaAtuacao: '', regime: WorkRegime.DE, leaveType: LeaveType.Nenhum, 
       hasReducedWorkload: false, role: 'Professor'
     });
     setIsAdding(false);
+    setEditingId(null);
+  };
+
+  const handleEdit = (teacher: User) => {
+    setFormData({
+      name: teacher.name,
+      email: teacher.email,
+      registration: teacher.registration,
+      ingressoYear: teacher.ingressoYear || '',
+      birthDate: teacher.birthDate || '',
+      areaAtuacao: teacher.areaAtuacao || '',
+      regime: teacher.regime,
+      leaveType: teacher.leaveType,
+      hasReducedWorkload: teacher.hasReducedWorkload,
+      role: teacher.role as UserRole
+    });
+    setEditingId(teacher.id);
+    setIsAdding(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingId) {
+      onDeleteTeacher(deletingId);
+      setNotification({ message: 'Docente excluído com sucesso!', type: 'success' });
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -902,12 +948,34 @@ const TeachersView = ({
           <p className="text-zinc-500 text-sm font-sans">Gestão de professores e encargos didáticos.</p>
         </div>
         <button 
-          onClick={() => setIsAdding(true)}
+          onClick={() => {
+            setFormData({
+              name: '', email: '', registration: '', ingressoYear: '', birthDate: '', 
+              areaAtuacao: '', regime: WorkRegime.DE, leaveType: LeaveType.Nenhum, 
+              hasReducedWorkload: false, role: 'Professor'
+            });
+            setEditingId(null);
+            setIsAdding(true);
+          }}
           className="bg-primary text-white px-4 py-2 rounded text-sm font-medium hover:bg-opacity-90 transition-all flex items-center gap-2"
         >
           <UserPlus size={18} /> Novo Docente
         </button>
       </header>
+
+      {notification && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className={`p-4 rounded-lg flex items-center gap-3 shadow-sm border ${
+            notification.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-rose-700'
+          }`}
+        >
+          {notification.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+          <p className="text-sm font-bold">{notification.message}</p>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="relative md:col-span-3">
@@ -933,6 +1001,9 @@ const TeachersView = ({
 
       {isAdding && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 border border-zinc-200 rounded-xl space-y-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-sm font-bold text-zinc-800 uppercase tracking-wider">{editingId ? 'Editar Docente' : 'Novo Docente'}</h3>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Nome Completo</label>
@@ -952,8 +1023,8 @@ const TeachersView = ({
             </div>
           </div>
           <div className="flex gap-3">
-            <button onClick={handleSubmit} className="bg-primary text-white px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider">Cadastrar</button>
-            <button onClick={() => setIsAdding(false)} className="text-zinc-500 text-xs font-bold uppercase tracking-wider px-2 hover:text-zinc-900 transition-colors">Cancelar</button>
+            <button onClick={handleSubmit} className="bg-primary text-white px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider">{editingId ? 'Salvar Alterações' : 'Cadastrar'}</button>
+            <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="text-zinc-500 text-xs font-bold uppercase tracking-wider px-2 hover:text-zinc-900 transition-colors">Cancelar</button>
           </div>
         </motion.div>
       )}
@@ -989,10 +1060,10 @@ const TeachersView = ({
                     <button onClick={() => onSelectTeacher(teacher.id)} className="p-2 hover:text-primary transition-colors" title="Visualizar Perfil">
                       <Eye size={18} />
                     </button>
-                    <button className="p-2 hover:text-zinc-900 transition-colors" title="Editar">
+                    <button onClick={() => handleEdit(teacher)} className="p-2 hover:text-zinc-900 transition-colors" title="Editar">
                       <Edit3 size={18} />
                     </button>
-                    <button onClick={() => onDeleteTeacher(teacher.id)} className="p-2 hover:text-alert transition-colors" title="Excluir">
+                    <button onClick={() => setDeletingId(teacher.id)} className="p-2 hover:text-alert transition-colors" title="Excluir">
                       <Trash2 size={18} />
                     </button>
                   </div>
@@ -1008,6 +1079,43 @@ const TeachersView = ({
           </tbody>
         </table>
       </div>
+
+      <AnimatePresence>
+        {deletingId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-zinc-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 space-y-6"
+            >
+              <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto">
+                <Trash2 size={32} />
+              </div>
+              <div className="text-center space-y-2">
+                <h3 className="text-xl font-bold text-zinc-900">Confirmar Exclusão?</h3>
+                <p className="text-zinc-500 text-sm">
+                  Ao excluir o docente <strong>{teachers.find(t => t.id === deletingId)?.name}</strong>, ele perderá permanentemente o acesso ao sistema e todas as suas alocações serão removidas.
+                </p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button 
+                  onClick={confirmDelete}
+                  className="flex-1 h-11 bg-rose-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-200"
+                >
+                  Excluir Agora
+                </button>
+                <button 
+                  onClick={() => setDeletingId(null)}
+                  className="flex-1 h-11 bg-zinc-100 text-zinc-500 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all font-sans"
+                >
+                  Manter
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -1145,7 +1253,14 @@ export default function App() {
     setSchedules([...schedules, { ...entry, id: Date.now().toString() }]);
   };
 
-  const deleteTeacher = (id: string) => setTeachers(teachers.filter(t => t.id !== id));
+  const updateTeacher = (data: any) => {
+    setTeachers(teachers.map(t => t.id === data.id ? { ...t, ...data } : t));
+  };
+
+  const deleteTeacher = (id: string) => {
+    setTeachers(teachers.filter(t => t.id !== id));
+    if (selectedTeacherId === id) setSelectedTeacherId(null);
+  };
 
   if (!session.isLoggedIn) return <LoginView onLogin={handleLogin} />;
 
@@ -1223,7 +1338,15 @@ export default function App() {
                   />
                 )}
                 {currentView === 'courses' && <CoursesView courses={courses} teachers={teachers} subjects={subjects} onAddCourse={addCourse} onAddSubject={addSubject} onUpdateCourse={updateCourse} />}
-                {currentView === 'teachers' && <TeachersView teachers={teachers} onAddTeacher={addTeacher} onSelectTeacher={setSelectedTeacherId} onDeleteTeacher={deleteTeacher} />}
+                {currentView === 'teachers' && (
+                  <TeachersView 
+                    teachers={teachers} 
+                    onAddTeacher={addTeacher} 
+                    onUpdateTeacher={updateTeacher}
+                    onSelectTeacher={setSelectedTeacherId} 
+                    onDeleteTeacher={deleteTeacher} 
+                  />
+                )}
                 {currentView === 'reports' && <ReportsView />}
                 {currentView === 'settings' && <SettingsView />}
               </>
