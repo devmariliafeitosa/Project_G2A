@@ -31,12 +31,16 @@ export interface User {
   hasReducedWorkload: boolean;
   ingressoYear?: string;
   birthDate?: string;
+  phone?: string;
+  cpf?: string;
+  login?: string;
   areaAtuacao?: string;
   cargaHoraria: number; // In-classroom hours
   disciplinasMinistradas: string[];
   courseId?: string; // If coordinator, which course
   avatarUrl?: string;
   password?: string;
+  status?: 'Ativo' | 'Inativo';
 }
 
 export enum CourseType {

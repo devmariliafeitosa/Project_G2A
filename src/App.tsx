@@ -69,22 +69,7 @@ const PASTEL_COLORS = [
   'bg-teal-100 border-teal-200 text-teal-700',
 ];
 
-const INITIAL_TEACHERS: User[] = [
-  {
-    id: '1',
-    name: 'Dr. Ricardo Silva',
-    email: 'ricardo.silva@ifce.edu.br',
-    registration: '1122334',
-    role: 'Professor',
-    campus: 'Tauá',
-    regime: WorkRegime.DE,
-    leaveType: LeaveType.Nenhum,
-    hasReducedWorkload: false,
-    cargaHoraria: 12,
-    disciplinasMinistradas: ['s1'],
-    areaAtuacao: 'Engenharia de Software'
-  }
-];
+const INITIAL_TEACHERS: User[] = [];
 
 const INITIAL_COURSES: Course[] = [
   {
@@ -105,42 +90,9 @@ const INITIAL_COURSES: Course[] = [
   }
 ];
 
-const INITIAL_SUBJECTS: Subject[] = [
-  {
-    id: 's1',
-    name: 'Banco de Dados I',
-    workload: 80,
-    courseId: 'c1',
-    period: 3,
-    type: 'Obrigatória',
-    color: PASTEL_COLORS[0]
-  },
-  {
-    id: 's2',
-    name: 'Programação Orientada a Objetos',
-    workload: 80,
-    courseId: 'c1',
-    period: 3,
-    type: 'Obrigatória',
-    color: PASTEL_COLORS[1]
-  },
-  {
-    id: 's3',
-    name: 'Estrutura de Dados',
-    workload: 80,
-    courseId: 'c1',
-    period: 3,
-    type: 'Obrigatória',
-    color: PASTEL_COLORS[2]
-  }
-];
+const INITIAL_SUBJECTS: Subject[] = [];
 
-const INITIAL_SCHEDULES: ScheduleEntry[] = [
-  { id: 'sc1', courseId: 'c1', period: 3, dayOfWeek: 'Segunda', timeSlotId: 'm1', subjectId: 's1' },
-  { id: 'sc2', courseId: 'c1', period: 3, dayOfWeek: 'Segunda', timeSlotId: 'm2', subjectId: 's1' },
-  { id: 'sc3', courseId: 'c1', period: 3, dayOfWeek: 'Terça', timeSlotId: 'm1', subjectId: 's2' },
-  { id: 'sc4', courseId: 'c1', period: 3, dayOfWeek: 'Terça', timeSlotId: 'm2', subjectId: 's2' },
-];
+const INITIAL_SCHEDULES: ScheduleEntry[] = [];
 
 const Badge = ({ children, variant = 'default' }: { children: React.ReactNode, variant?: 'default' | 'success' | 'alert' | 'highlight' }) => {
   const styles = {
@@ -514,7 +466,7 @@ const DashboardView = ({
                                     if (e.target.value) {
                                       // Simple logic: pick the first teacher who is allocated this subject
                                       // In a real app, this would be more explicit
-                                      const allocatedTeacher = teachers.find(t => t.disciplinasMinistradas.includes(e.target.value));
+                                      const allocatedTeacher = teachers.find(t => t.disciplinasMinistradas?.includes(e.target.value));
                                       onAddSchedule({
                                         courseId: selectedCourseId,
                                         period: selectedPeriod,
@@ -810,13 +762,16 @@ const CoursesView = ({
 const TeacherProfileView = ({ 
   teacher, 
   onBack, 
-  onUpdate 
+  onUpdate,
+  currentUserRole
 }: { 
   teacher: User, 
   onBack: () => void, 
-  onUpdate: (u: User) => void 
+  onUpdate: (u: User) => void,
+  currentUserRole?: UserRole
 }) => {
   const limit = getWorkloadLimit(teacher.role);
+  const isAdmin = currentUserRole === 'Admin';
   
   return (
     <div className="space-y-10 animate-in slide-in-from-right duration-500">
@@ -824,10 +779,11 @@ const TeacherProfileView = ({
         <button onClick={onBack} className="p-3 bg-white border border-zinc-100 rounded-2xl text-zinc-400 hover:text-zinc-900 transition-all shadow-sm">
           <ArrowLeft size={20} />
         </button>
-        <div>
+        <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">{teacher.name}</h1>
             <Badge variant="highlight">{teacher.role}</Badge>
+            <Badge variant={teacher.status === 'Inativo' ? 'alert' : 'success'}>{teacher.status || 'Ativo'}</Badge>
           </div>
           <p className="text-zinc-400 text-xs font-semibold uppercase tracking-widest">{teacher.registration} • {teacher.campus}</p>
         </div>
@@ -855,7 +811,7 @@ const TeacherProfileView = ({
                   </button>
                 </div>
                 <div className="space-y-3">
-                  {teacher.disciplinasMinistradas.length === 0 ? (
+                  {(teacher.disciplinasMinistradas || []).length === 0 ? (
                     <div className="p-10 border-2 border-dashed border-zinc-50 rounded-xl text-center">
                       <p className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Sem disciplinas alocadas</p>
                     </div>
@@ -871,14 +827,14 @@ const TeacherProfileView = ({
               <div className="relative z-10 space-y-4">
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Encargo Didático Semanal</p>
                 <div className="flex items-baseline gap-2">
-                  <h4 className="text-6xl font-bold tracking-tighter leading-none">{teacher.cargaHoraria}h</h4>
+                  <h4 className="text-6xl font-bold tracking-tighter leading-none">{(teacher.cargaHoraria || 0)}h</h4>
                   <span className="text-xl font-bold opacity-30">/ {limit}h</span>
                 </div>
                 <div className="pt-4 space-y-4">
                    <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
-                        animate={{ width: `${(teacher.cargaHoraria / limit) * 100}%` }}
+                        animate={{ width: `${((teacher.cargaHoraria || 0) / limit) * 100}%` }}
                         className="h-full bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,0.5)]"
                       />
                    </div>
@@ -889,13 +845,20 @@ const TeacherProfileView = ({
               </div>
            </div>
 
-           <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm space-y-6">
+            <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm space-y-6">
               <div className="flex items-center gap-3">
                 <Settings size={20} className="text-zinc-400" />
-                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Ações Rápidas</h4>
+                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Painel Operacional</h4>
               </div>
               <div className="flex flex-col gap-2">
-                <button className="w-full h-11 bg-zinc-50 rounded-xl text-[10px] font-bold uppercase tracking-widest text-zinc-600 hover:bg-primary hover:text-white transition-all">Alterar Status</button>
+                {isAdmin && (
+                  <button 
+                    onClick={() => onUpdate({ ...teacher, status: teacher.status === 'Inativo' ? 'Ativo' : 'Inativo' })}
+                    className={`w-full h-11 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${teacher.status === 'Inativo' ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-900 hover:text-white'}`}
+                  >
+                    {teacher.status === 'Inativo' ? 'Reativar Usuário' : 'Desativar Usuário'}
+                  </button>
+                )}
                 <button className="w-full h-11 bg-rose-50 rounded-xl text-[10px] font-bold uppercase tracking-widest text-rose-500 hover:bg-rose-500 hover:text-white transition-all">Remover do Campus</button>
               </div>
            </div>
@@ -910,31 +873,42 @@ const TeachersView = ({
   onAddTeacher,
   onUpdateTeacher,
   onSelectTeacher,
-  onDeleteTeacher
+  onDeleteTeacher,
+  currentUserRole,
+  currentUserId
 }: { 
   teachers: User[], 
   onAddTeacher: (data: any) => void,
   onUpdateTeacher: (data: any) => void,
   onSelectTeacher: (id: string) => void,
-  onDeleteTeacher: (id: string) => void
+  onDeleteTeacher: (id: string) => void,
+  currentUserRole?: UserRole,
+  currentUserId?: string
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmingEditId, setConfirmingEditId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'alert' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('Todos');
+  const [statusFilter, setStatusFilter] = useState<string>('Todos');
+  const isAdmin = currentUserRole === 'Admin';
+
   const [formData, setFormData] = useState({ 
     name: '', 
     email: '', 
-    registration: '', 
+    registration: '', // SIAPE
     ingressoYear: '', 
     birthDate: '', 
     areaAtuacao: '',
+    phone: '',
+    cpf: '',
     regime: WorkRegime.DE,
     leaveType: LeaveType.Nenhum,
     hasReducedWorkload: false,
-    role: 'Professor' as UserRole
+    role: 'Professor' as UserRole,
+    status: 'Ativo' as 'Ativo' | 'Inativo'
   });
 
   useEffect(() => {
@@ -949,9 +923,10 @@ const TeachersView = ({
       const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                            t.registration.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesRole = roleFilter === 'Todos' || t.role === roleFilter;
-      return matchesSearch && matchesRole;
+      const matchesStatus = statusFilter === 'Todos' || (t.status || 'Ativo') === statusFilter;
+      return matchesSearch && matchesRole && matchesStatus;
     });
-  }, [teachers, searchTerm, roleFilter]);
+  }, [teachers, searchTerm, roleFilter, statusFilter]);
 
   const handleSubmit = () => {
     if (!formData.name || !formData.email || !formData.registration) return;
@@ -966,8 +941,9 @@ const TeachersView = ({
 
     setFormData({
       name: '', email: '', registration: '', ingressoYear: '', birthDate: '', 
-      areaAtuacao: '', regime: WorkRegime.DE, leaveType: LeaveType.Nenhum, 
-      hasReducedWorkload: false, role: 'Professor'
+      areaAtuacao: '', phone: '', cpf: '', regime: WorkRegime.DE, 
+      leaveType: LeaveType.Nenhum, hasReducedWorkload: false, role: 'Professor',
+      status: 'Ativo'
     });
     setIsAdding(false);
     setEditingId(null);
@@ -981,10 +957,13 @@ const TeachersView = ({
       ingressoYear: teacher.ingressoYear || '',
       birthDate: teacher.birthDate || '',
       areaAtuacao: teacher.areaAtuacao || '',
+      phone: teacher.phone || '',
+      cpf: teacher.cpf || '',
       regime: teacher.regime,
       leaveType: teacher.leaveType,
       hasReducedWorkload: teacher.hasReducedWorkload,
-      role: teacher.role as UserRole
+      role: teacher.role as UserRole,
+      status: (teacher.status || 'Ativo') as 'Ativo' | 'Inativo'
     });
     setEditingId(teacher.id);
     setIsAdding(true);
@@ -1009,8 +988,9 @@ const TeachersView = ({
           onClick={() => {
             setFormData({
               name: '', email: '', registration: '', ingressoYear: '', birthDate: '', 
-              areaAtuacao: '', regime: WorkRegime.DE, leaveType: LeaveType.Nenhum, 
-              hasReducedWorkload: false, role: 'Professor'
+              areaAtuacao: '', phone: '', cpf: '', regime: WorkRegime.DE, 
+              leaveType: LeaveType.Nenhum, hasReducedWorkload: false, role: 'Professor',
+              status: 'Ativo'
             });
             setEditingId(null);
             setIsAdding(true);
@@ -1036,7 +1016,7 @@ const TeachersView = ({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="relative md:col-span-3">
+        <div className="relative md:col-span-2">
           <Search className="absolute left-3 top-2.5 text-zinc-400" size={16} />
           <input 
             value={searchTerm}
@@ -1055,6 +1035,15 @@ const TeachersView = ({
           <option value="Coordenador">Coordenadores</option>
           <option value="Diretor">Diretores</option>
         </select>
+        <select 
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          className="bg-white px-4 rounded border border-zinc-200 text-sm outline-none focus:border-primary/30 h-10"
+        >
+          <option value="Todos">Todos os Status</option>
+          <option value="Ativo">Ativos</option>
+          <option value="Inativo">Inativos</option>
+        </select>
       </div>
 
       {isAdding && (
@@ -1068,16 +1057,53 @@ const TeachersView = ({
               <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">E-mail</label>
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Data de Nascimento</label>
+              <input type="date" value={formData.birthDate} onChange={e => setFormData({...formData, birthDate: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">E-mail Institucional</label>
               <input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Matrícula SIAPE</label>
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Telefone</label>
+              <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" placeholder="(00) 00000-0000" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Área de Atuação</label>
+              <input value={formData.areaAtuacao} onChange={e => setFormData({...formData, areaAtuacao: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Ano de Ingresso</label>
+              <input type="number" value={formData.ingressoYear} onChange={e => setFormData({...formData, ingressoYear: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" placeholder="Ex: 2020" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">SIAPE</label>
               <input value={formData.registration} onChange={e => setFormData({...formData, registration: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" placeholder="Ex: 1234567" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Ano Egresso</label>
-              <input type="number" value={formData.ingressoYear} onChange={e => setFormData({...formData, ingressoYear: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" placeholder="Ex: 2020" />
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">CPF</label>
+              <input value={formData.cpf} onChange={e => setFormData({...formData, cpf: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" placeholder="000.000.000-00" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Função/Cargo</label>
+              <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as UserRole})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30">
+                <option value="Professor">Professor</option>
+                <option value="Coordenador">Coordenador</option>
+                <option value="Diretor">Diretor</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Regime de Trabalho</label>
+              <select value={formData.regime} onChange={e => setFormData({...formData, regime: e.target.value as WorkRegime})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30">
+                {Object.values(WorkRegime).map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Status</label>
+              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30">
+                <option value="Ativo">Ativo</option>
+                <option value="Inativo">Inativo</option>
+              </select>
             </div>
           </div>
           <div className="flex gap-3">
@@ -1111,19 +1137,31 @@ const TeachersView = ({
                   <p className="text-[10px] text-zinc-400 uppercase tracking-tight font-medium mt-0.5">{teacher.registration}</p>
                 </td>
                 <td className="px-6 py-4 text-center">
-                  <span className={`text-sm font-bold ${teacher.cargaHoraria > 20 ? 'text-alert' : 'text-zinc-900'}`}>{teacher.cargaHoraria}h</span>
+                  <span className={`text-sm font-bold ${(teacher.cargaHoraria || 0) > 20 ? 'text-alert' : 'text-zinc-900'}`}>{teacher.cargaHoraria || 0}h</span>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2 text-zinc-300">
                     <button onClick={() => onSelectTeacher(teacher.id)} className="p-2 hover:text-primary transition-colors" title="Visualizar Perfil">
                       <Eye size={18} />
                     </button>
-                    <button onClick={() => handleEdit(teacher)} className="p-2 hover:text-zinc-900 transition-colors" title="Editar">
-                      <Edit3 size={18} />
-                    </button>
-                    <button onClick={() => setDeletingId(teacher.id)} className="p-2 hover:text-alert transition-colors" title="Excluir">
-                      <Trash2 size={18} />
-                    </button>
+                    {isAdmin && teacher.id !== currentUserId && (
+                      <>
+                        <button 
+                          onClick={() => setConfirmingEditId(teacher.id)} 
+                          className="p-2 hover:text-amber-500 transition-colors" 
+                          title="Editar Docente"
+                        >
+                          <Edit3 size={18} />
+                        </button>
+                        <button 
+                          onClick={() => setDeletingId(teacher.id)} 
+                          className="p-2 hover:text-alert transition-colors" 
+                          title="Excluir Docente"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -1137,6 +1175,47 @@ const TeachersView = ({
           </tbody>
         </table>
       </div>
+
+      <AnimatePresence>
+        {confirmingEditId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-zinc-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 space-y-6"
+            >
+              <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto">
+                <Edit3 size={32} />
+              </div>
+              <div className="text-center space-y-2">
+                <h3 className="text-xl font-bold text-zinc-900">Editar Docente?</h3>
+                <p className="text-zinc-500 text-sm">
+                  Deseja realmente alterar as informações do docente <strong>{teachers.find(t => t.id === confirmingEditId)?.name}</strong>?
+                </p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button 
+                  onClick={() => {
+                    const teacher = teachers.find(t => t.id === confirmingEditId);
+                    if (teacher) handleEdit(teacher);
+                    setConfirmingEditId(null);
+                  }}
+                  className="flex-1 h-11 bg-amber-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-amber-600 transition-all shadow-lg shadow-amber-200"
+                >
+                  Sim, Editar
+                </button>
+                <button 
+                  onClick={() => setConfirmingEditId(null)}
+                  className="flex-1 h-11 bg-zinc-100 text-zinc-500 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all font-sans"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {deletingId && (
@@ -1253,10 +1332,30 @@ export default function App() {
   const [session, setSession] = useState<{ user: User | null, isLoggedIn: boolean }>({ user: null, isLoggedIn: false });
   const [currentView, setCurrentView] = useState<'dashboard' | 'courses' | 'teachers' | 'settings' | 'reports'>('dashboard');
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
-  const [teachers, setTeachers] = useState<User[]>(INITIAL_TEACHERS);
+  const [teachers, setTeachers] = useState<User[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>(INITIAL_SUBJECTS);
   const [schedules, setSchedules] = useState<ScheduleEntry[]>(INITIAL_SCHEDULES);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
+
+  // Fetch users if admin
+  useEffect(() => {
+    if (session.isLoggedIn && session.user?.role === 'Admin') {
+      const fetchUsers = async () => {
+        try {
+          const res = await fetch("/api/users", {
+            headers: { "Authorization": `Bearer ${localStorage.getItem("authToken")}` }
+          });
+          const data = await res.json();
+          if (res.ok) setTeachers(data);
+        } catch (err) {
+          console.error("Failed to fetch users", err);
+        }
+      };
+      fetchUsers();
+    } else if (!session.isLoggedIn) {
+      setTeachers(INITIAL_TEACHERS);
+    }
+  }, [session.isLoggedIn, session.user]);
 
   const handleLogin = async (email: string, pass: string) => {
     try {
@@ -1271,11 +1370,6 @@ export default function App() {
 
       localStorage.setItem("authToken", data.token);
       setSession({ user: data.user, isLoggedIn: true });
-      
-      // Ensure the logged in user is in the teachers list so profile works
-      if (!teachers.find(t => t.id === data.user.id)) {
-        setTeachers([...teachers, data.user]);
-      }
     } catch (err: any) {
       alert(err.message);
     }
@@ -1343,27 +1437,89 @@ export default function App() {
     setCourses(courses.map(c => c.id === course.id ? course : c));
   };
 
-  const addTeacher = (data: any) => {
-    setTeachers([...teachers, {
-      ...data,
-      id: Date.now().toString(),
-      campus: 'Tauá',
-      cargaHoraria: getWorkloadLimit(data.role),
-      disciplinasMinistradas: []
-    }]);
+  const addTeacher = async (data: any) => {
+    if (session.user?.role !== 'Admin') {
+      // Demo fallback
+      setTeachers([...teachers, {
+        ...data,
+        id: Date.now().toString(),
+        campus: 'Tauá',
+        cargaHoraria: getWorkloadLimit(data.role),
+        disciplinasMinistradas: [],
+        status: 'Ativo'
+      }]);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+        },
+        body: JSON.stringify({ ...data, campus: 'Tauá' }),
+      });
+      const newUser = await res.json();
+      if (res.ok) {
+        setTeachers([...teachers, { ...newUser, disciplinasMinistradas: [], cargaHoraria: getWorkloadLimit(newUser.role) }]);
+      } else {
+        throw new Error(newUser.error);
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   const addSchedule = (entry: Omit<ScheduleEntry, 'id'>) => {
     setSchedules([...schedules, { ...entry, id: Date.now().toString() }]);
   };
 
-  const updateTeacher = (data: any) => {
-    setTeachers(teachers.map(t => t.id === data.id ? { ...t, ...data } : t));
+  const updateTeacher = async (data: any) => {
+    if (session.user?.role !== 'Admin') {
+      setTeachers(teachers.map(t => t.id === data.id ? { ...t, ...data } : t));
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/users/${data.id}`, {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+        },
+        body: JSON.stringify(data),
+      });
+      const updatedUser = await res.json();
+      if (res.ok) {
+        setTeachers(teachers.map(t => t.id === data.id ? { ...t, ...updatedUser } : t));
+      } else {
+        throw new Error(updatedUser.error);
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const deleteTeacher = (id: string) => {
-    setTeachers(teachers.filter(t => t.id !== id));
-    if (selectedTeacherId === id) setSelectedTeacherId(null);
+  const deleteTeacher = async (id: string) => {
+    if (session.user?.role !== 'Admin') {
+      setTeachers(teachers.filter(t => t.id !== id));
+      if (selectedTeacherId === id) setSelectedTeacherId(null);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${localStorage.getItem("authToken")}` }
+      });
+      if (res.ok) {
+        setTeachers(teachers.filter(t => t.id !== id));
+        if (selectedTeacherId === id) setSelectedTeacherId(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete user", err);
+    }
   };
 
   if (!session.isLoggedIn) return <LoginView onLogin={handleLogin} />;
@@ -1426,7 +1582,8 @@ export default function App() {
               <TeacherProfileView 
                 teacher={teachers.find(t => t.id === selectedTeacherId)!} 
                 onBack={() => setSelectedTeacherId(null)}
-                onUpdate={(u) => setTeachers(teachers.map(t => t.id === u.id ? u : t))}
+                onUpdate={updateTeacher}
+                currentUserRole={session.user?.role}
               />
             ) : (
               <>
@@ -1449,6 +1606,8 @@ export default function App() {
                     onUpdateTeacher={updateTeacher}
                     onSelectTeacher={setSelectedTeacherId} 
                     onDeleteTeacher={deleteTeacher} 
+                    currentUserRole={session.user?.role}
+                    currentUserId={session.user?.id}
                   />
                 )}
                 {currentView === 'reports' && <ReportsView />}

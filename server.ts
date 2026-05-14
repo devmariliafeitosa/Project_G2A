@@ -17,30 +17,48 @@ const users = [
   {
     id: "99",
     email: "admin@ifce.edu.br",
+    login: "admin",
     name: "Administrador Geral",
     password: bcrypt.hashSync("123456", 10),
     role: "Admin",
     registration: "ADMIN01",
-    campus: "Tauá"
-  },
-  {
-    id: "1",
-    email: "ricardo.silva@ifce.edu.br",
-    name: "Dr. Ricardo Silva",
-    password: bcrypt.hashSync("password123", 10),
-    role: "Professor",
-    registration: "1122334",
-    campus: "Tauá"
+    campus: "Tauá",
+    status: "Ativo",
+    cargaHoraria: 0,
+    disciplinasMinistradas: []
   }
 ];
+
+// Helper for Admin check
+const adminOnly = (req: any, res: any, next: any) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: "Não autorizado" });
+
+  try {
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (decoded.role === "Admin") {
+      next();
+    } else {
+      res.status(403).json({ error: "Acesso negado: Apenas administradores" });
+    }
+  } catch (err) {
+    res.status(401).json({ error: "Token inválido" });
+  }
+};
 
 // Auth Endpoints
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
-  const user = users.find(u => u.email === email);
+  // Login can be email, login field or registration (SIAPE)
+  const user = users.find(u => u.email === email || u.login === email || u.registration === email);
 
   if (!user || !bcrypt.compareSync(password, user.password)) {
     return res.status(401).json({ error: "Credenciais incorretas" });
+  }
+
+  if (user.status === "Inativo") {
+    return res.status(403).json({ error: "Este usuário está desativado" });
   }
 
   const token = jwt.sign({ 
@@ -58,7 +76,8 @@ app.post("/api/login", async (req, res) => {
     name: user.name, 
     role: user.role,
     registration: user.registration,
-    campus: user.campus
+    campus: user.campus,
+    status: user.status
   } });
 });
 
@@ -70,6 +89,7 @@ app.post("/api/refresh", (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = users.find(u => u.id === decoded.id);
     if (!user) return res.status(401).json({ error: "Usuário não encontrado" });
+    if (user.status === "Inativo") return res.status(403).json({ error: "Usuário inativo" });
 
     const newToken = jwt.sign({ 
       id: user.id, 
@@ -84,6 +104,71 @@ app.post("/api/refresh", (req, res) => {
   } catch (err) {
     res.status(401).json({ error: "Token inválido ou expirado" });
   }
+});
+
+// User Management Endpoints (Admin Only)
+app.get("/api/users", adminOnly, (req, res) => {
+  const safeUsers = users.map(({ password, ...u }) => u);
+  res.json(safeUsers);
+});
+
+app.post("/api/users", adminOnly, (req, res) => {
+  const { name, email, role, registration, campus, password, birthDate, phone, areaAtuacao, cpf, login, ingressoYear } = req.body;
+  
+  if (users.find(u => u.email === email)) {
+    return res.status(400).json({ error: "E-mail já cadastrado" });
+  }
+  if (login && users.find(u => u.login === login)) {
+    return res.status(400).json({ error: "Login de acesso já cadastrado" });
+  }
+
+  const newUser = {
+    id: Date.now().toString(),
+    name,
+    email,
+    role,
+    registration,
+    campus,
+    birthDate,
+    phone,
+    areaAtuacao,
+    cpf,
+    login,
+    ingressoYear,
+    status: "Ativo",
+    cargaHoraria: 0,
+    disciplinasMinistradas: [],
+    password: bcrypt.hashSync(password || "ifce123", 10)
+  };
+
+  users.push(newUser);
+  const { password: _, ...safeUser } = newUser;
+  res.status(201).json(safeUser);
+});
+
+app.put("/api/users/:id", adminOnly, (req, res) => {
+  const { id } = req.params;
+  const index = users.findIndex(u => u.id === id);
+  
+  if (index === -1) return res.status(404).json({ error: "Usuário não encontrado" });
+
+  const { email } = req.body;
+  if (email && users.find(u => u.email === email && u.id !== id)) {
+    return res.status(400).json({ error: "E-mail já cadastrado" });
+  }
+
+  users[index] = { ...users[index], ...req.body };
+  const { password, ...safeUser } = users[index];
+  res.json(safeUser);
+});
+
+app.delete("/api/users/:id", adminOnly, (req, res) => {
+  const { id } = req.params;
+  const index = users.findIndex(u => u.id === id);
+  if (index === -1) return res.status(404).json({ error: "Usuário não encontrado" });
+  
+  users.splice(index, 1);
+  res.status(204).send();
 });
 
 app.post("/api/forgot-password", (req, res) => {
