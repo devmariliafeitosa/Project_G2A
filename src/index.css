@@ -5,19 +5,18 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, monospace;
   
-  --color-primary: #004a2f; /* IFCE Green */
-  --color-primary-light: #f0fdf4;
-  --color-alert: #d32f2f;
+  --color-primary: #2D8A39; /* Refined IFCE Green */
+  --color-primary-light: #f1f8f1;
+  --color-primary-dark: #1e5e26;
+  --color-alert: #e11d48;
   
-  --radius-sm: 0.125rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.02), 0 10px 25px rgba(0, 0, 0, 0.03);
+  --shadow-strong: 0 4px 20px rgba(0, 0, 0, 0.05), 0 20px 50px rgba(45, 138, 57, 0.1);
 }
 
 @layer base {
   body {
-    @apply bg-zinc-50 text-zinc-900 font-sans antialiased;
+    @apply bg-[#FDFDFD] text-zinc-900 font-sans antialiased selection:bg-primary/20 selection:text-primary-dark;
   }
 }
 
