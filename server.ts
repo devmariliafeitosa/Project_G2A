@@ -148,6 +148,23 @@ app.put("/api/profile", authenticate, (req: any, res) => {
   res.json(safeUser);
 });
 
+app.post("/api/deactivate-account", authenticate, (req: any, res) => {
+  const { password } = req.body;
+  const user = users.find(u => u.id === req.user.id);
+
+  if (!user) {
+    return res.status(404).json({ error: "Usuário não encontrado" });
+  }
+
+  if (!bcrypt.compareSync(password, user.password)) {
+    return res.status(400).json({ error: "Senha incorreta" });
+  }
+
+  user.status = "Inativo";
+  console.log(`Conta desativada: ${user.name} (ID: ${user.id}) em ${new Date().toISOString()}`);
+  res.json({ message: "Conta desativada com sucesso. Você será desconectado." });
+});
+
 app.post("/api/refresh", (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(401).json({ error: "Token não fornecido" });

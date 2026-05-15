@@ -776,18 +776,22 @@ const TeacherProfileView = ({
   onBack, 
   onUpdate,
   currentUserRole,
-  currentUserId
+  currentUserId,
+  onLogout
 }: { 
   teacher: User, 
   onBack: () => void, 
   onUpdate: (u: User) => void,
   currentUserRole?: UserRole,
-  currentUserId?: string
+  currentUserId?: string,
+  onLogout: () => void
 }) => {
   const limit = getWorkloadLimit(teacher.role);
   const isAdmin = currentUserRole === 'Admin';
   const isOwnProfile = teacher.id === currentUserId;
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isDeactivatingAccount, setIsDeactivatingAccount] = useState(false);
+  const [deactivatePassword, setDeactivatePassword] = useState('');
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -909,6 +913,39 @@ const TeacherProfileView = ({
       }
     } catch (err: any) {
       setProfileMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeactivateAccount = async () => {
+    if (!deactivatePassword) {
+      setPasswordError("Senha é obrigatória para desativar a conta");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setPasswordError(null);
+    try {
+      const res = await fetch("/api/deactivate-account", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+        },
+        body: JSON.stringify({ password: deactivatePassword }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPasswordSuccess("Conta desativada com sucesso! Você será desconectado.");
+        setTimeout(() => {
+          onLogout();
+        }, 3000);
+      } else {
+        setPasswordError(data.error || "Erro ao desativar conta");
+      }
+    } catch (err: any) {
+      setPasswordError(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -1112,6 +1149,19 @@ const TeacherProfileView = ({
                     {teacher.status === 'Inativo' ? 'Reativar Usuário' : 'Desativar Usuário'}
                   </button>
                 )}
+                {isOwnProfile && (
+                  <button 
+                    onClick={() => {
+                       setDeactivatePassword('');
+                       setPasswordError(null);
+                       setPasswordSuccess(null);
+                       setIsDeactivatingAccount(true);
+                    }}
+                    className="w-full h-11 bg-rose-50 rounded-xl text-[10px] font-bold uppercase tracking-widest text-rose-500 hover:bg-rose-500 hover:text-white transition-all"
+                  >
+                    Desativar minha conta
+                  </button>
+                )}
                 {!isOwnProfile && (
                   <button className="w-full h-11 bg-rose-50 rounded-xl text-[10px] font-bold uppercase tracking-widest text-rose-500 hover:bg-rose-500 hover:text-white transition-all">Remover do Campus</button>
                 )}
@@ -1198,6 +1248,71 @@ const TeacherProfileView = ({
                 <button 
                   onClick={() => setIsChangingPassword(false)}
                   className="flex-1 h-12 bg-zinc-100 text-zinc-500 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all font-sans"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isDeactivatingAccount && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 space-y-6"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-zinc-900">Desativar Minha Conta</h3>
+                <button onClick={() => setIsDeactivatingAccount(false)} className="text-zinc-400 hover:text-zinc-600">
+                  <ArrowLeft size={20} className="rotate-90 md:rotate-0" />
+                </button>
+              </div>
+
+              <div className="p-4 bg-amber-50 text-amber-700 border border-amber-100 rounded-xl text-[10px] font-bold leading-relaxed">
+                Atenção: Ao desativar sua conta, seu acesso será bloqueado. Seus registros acadêmicos e de alocação serão preservados como "Inativos". A reativação exige aprovação administrativa.
+              </div>
+
+              {passwordError && (
+                <div className="p-3 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl text-[10px] font-bold">
+                  {passwordError}
+                </div>
+              )}
+
+              {passwordSuccess && (
+                <div className="p-3 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl text-[10px] font-bold flex items-center gap-2">
+                  <CheckCircle2 size={16} />
+                  {passwordSuccess}
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Confirme sua senha para continuar</label>
+                <input 
+                  type="password"
+                  value={deactivatePassword}
+                  onChange={e => setDeactivatePassword(e.target.value)}
+                  className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm outline-none focus:border-rose-500/20"
+                  placeholder="Sua senha atual"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button 
+                  onClick={handleDeactivateAccount}
+                  disabled={isSubmitting || !!passwordSuccess}
+                  className="flex-1 h-12 bg-rose-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                   {isSubmitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Confirmar Desativação"}
+                </button>
+                <button 
+                  onClick={() => setIsDeactivatingAccount(false)}
+                  disabled={isSubmitting || !!passwordSuccess}
+                  className="flex-1 h-12 bg-zinc-100 text-zinc-500 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all font-sans disabled:opacity-50"
                 >
                   Cancelar
                 </button>
@@ -1898,6 +2013,7 @@ export default function App() {
                 onUpdate={updateTeacher}
                 currentUserRole={session.user?.role}
                 currentUserId={session.user?.id}
+                onLogout={handleLogout}
               />
             ) : (
               <>
