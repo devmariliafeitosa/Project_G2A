@@ -112,3 +112,18 @@ export interface TeacherPreference {
   availabilityNotes: string;
   lastUpdated: string;
 }
+
+export type NotificationType = 'Alerta' | 'Solicitação' | 'Atualização' | 'Erro';
+export type NotificationPriority = 'Alta' | 'Média' | 'Baixa';
+export type NotificationStatus = 'Lida' | 'Não lida' | 'Arquivada';
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  description: string;
+  timestamp: string;
+  status: NotificationStatus;
+  priority: NotificationPriority;
+  relatedPath?: string; // e.g., 'courses', 'teachers'
+}

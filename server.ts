@@ -37,6 +37,29 @@ const users = [
   }
 ];
 
+const notifications = [
+  {
+    id: "1",
+    type: "Alerta",
+    title: "Carga horária excedida",
+    description: "O docente João Silva excedeu o limite de 20h em sala de aula.",
+    timestamp: new Date().toISOString(),
+    status: "Não lida",
+    priority: "Alta",
+    relatedPath: "teachers"
+  },
+  {
+    id: "2",
+    type: "Solicitação",
+    title: "Nova solicitação de alocação",
+    description: "O coordenador Pedro Santos solicitou alocação para a disciplina de Cálculo I.",
+    timestamp: new Date(Date.now() - 3600000).toISOString(),
+    status: "Não lida",
+    priority: "Média",
+    relatedPath: "courses"
+  }
+];
+
 // Helper for general authentication
 const authenticate = (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
@@ -255,6 +278,29 @@ app.delete("/api/users/:id", adminOnly, (req, res) => {
   if (index === -1) return res.status(404).json({ error: "Usuário não encontrado" });
   
   users.splice(index, 1);
+  res.status(204).send();
+});
+
+// Notification Endpoints (Admin Only)
+app.get("/api/notifications", adminOnly, (req, res) => {
+  res.json(notifications);
+});
+
+app.patch("/api/notifications/:id", adminOnly, (req, res) => {
+  const { id } = req.params;
+  const index = notifications.findIndex(n => n.id === id);
+  if (index === -1) return res.status(404).json({ error: "Notificação não encontrada" });
+
+  notifications[index] = { ...notifications[index], ...req.body };
+  res.json(notifications[index]);
+});
+
+app.delete("/api/notifications/:id", adminOnly, (req, res) => {
+  const { id } = req.params;
+  const index = notifications.findIndex(n => n.id === id);
+  if (index === -1) return res.status(404).json({ error: "Notificação não encontrada" });
+
+  notifications.splice(index, 1);
   res.status(204).send();
 });
 

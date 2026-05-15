@@ -26,7 +26,11 @@ import {
   Calendar,
   Clock,
   Activity,
-  Download
+  Download,
+  Bell,
+  Archive,
+  MessageSquare,
+  Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -38,7 +42,11 @@ import {
   Course, 
   CourseType, 
   Subject,
-  ScheduleEntry
+  ScheduleEntry,
+  Notification,
+  NotificationType,
+  NotificationPriority,
+  NotificationStatus
 } from './types';
 
 // --- Constants & Mock Data ---
@@ -122,17 +130,24 @@ const Badge = ({ children, variant = 'default' }: { children: React.ReactNode, v
   );
 };
 
-const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick: () => void }) => (
+const SidebarItem = ({ icon: Icon, label, active, onClick, badge }: { icon: any, label: string, active?: boolean, onClick: () => void, badge?: number }) => (
   <button 
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
       active 
         ? 'bg-primary text-white shadow-sm' 
         : 'text-zinc-600 hover:bg-zinc-50 hover:text-primary'
     }`}
   >
-    <Icon size={18} />
-    <span className="text-sm font-medium">{label}</span>
+    <div className="flex items-center gap-3">
+      <Icon size={18} />
+      <span className="text-sm font-medium">{label}</span>
+    </div>
+    {badge !== undefined && badge > 0 && (
+      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${active ? 'bg-white text-primary' : 'bg-rose-500 text-white'}`}>
+        {badge}
+      </span>
+    )}
   </button>
 );
 
@@ -1483,6 +1498,177 @@ const TeacherProfileView = ({
   );
 };
 
+const NotificationsView = ({ 
+  notifications,
+  onUpdateNotification,
+  onDeleteNotification,
+  onNavigate
+}: { 
+  notifications: Notification[],
+  onUpdateNotification: (id: string, updates: Partial<Notification>) => void,
+  onDeleteNotification: (id: string) => void,
+  onNavigate: (path: string) => void
+}) => {
+  const [filter, setFilter] = useState<'Todas' | 'Não lidas' | 'Alta prioridade' | 'Alertas' | 'Solicitações' | 'Arquivada'>('Todas');
+
+  const filteredNotifications = useMemo(() => {
+    let list = [...notifications];
+    
+    // Ordered by priority (Alta first) then by date
+    list.sort((a, b) => {
+      const priorityMap = { 'Alta': 0, 'Média': 1, 'Baixa': 2 };
+      if (priorityMap[a.priority] !== priorityMap[b.priority]) {
+        return priorityMap[a.priority] - priorityMap[b.priority];
+      }
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
+
+    if (filter === 'Não lidas') return list.filter(n => n.status === 'Não lida');
+    if (filter === 'Alta prioridade') return list.filter(n => n.priority === 'Alta');
+    if (filter === 'Alertas') return list.filter(n => n.type === 'Alerta');
+    if (filter === 'Solicitações') return list.filter(n => n.type === 'Solicitação');
+    if (filter === 'Arquivada') return list.filter(n => n.status === 'Arquivada');
+    
+    // 'Todas' shows everything EXCEPT archived by default? 
+    // Requirement says "Todas", "Histórico arquivado". So "Todas" usually means active ones.
+    return list.filter(n => n.status !== 'Arquivada');
+  }, [notifications, filter]);
+
+  const unreadCount = notifications.filter(n => n.status === 'Não lida').length;
+
+  const getTypeIcon = (type: NotificationType) => {
+    switch (type) {
+      case 'Alerta': return <AlertCircle size={18} className="text-amber-500" />;
+      case 'Solicitação': return <UserPlus size={18} className="text-primary" />;
+      case 'Atualização': return <Activity size={18} className="text-emerald-500" />;
+      case 'Erro': return <LogOut size={18} className="text-rose-500" />;
+      default: return <Bell size={18} className="text-zinc-400" />;
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <header className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900 tracking-tight flex items-center gap-3">
+            Notificações
+            {unreadCount > 0 && (
+              <span className="bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                {unreadCount} novas
+              </span>
+            )}
+          </h1>
+          <p className="text-zinc-500 text-sm font-sans">Acompanhe alertas operacionais e solicitações pendentes.</p>
+        </div>
+      </header>
+
+      <div className="flex flex-wrap gap-2 pb-2">
+        {['Todas', 'Não lidas', 'Alta prioridade', 'Alertas', 'Solicitações', 'Arquivada'].map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f as any)}
+            className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all ${
+              filter === f 
+                ? 'bg-primary text-white border-primary shadow-sm' 
+                : 'bg-white text-zinc-500 border-zinc-200 hover:border-primary/30'
+            }`}
+          >
+            {f === 'Arquivada' ? 'Histórico Arquivado' : f}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-4">
+        {filteredNotifications.length > 0 ? (
+          filteredNotifications.map((notif) => (
+            <motion.div 
+              layout
+              key={notif.id} 
+              className={`bg-white border rounded-2xl p-6 flex flex-col md:flex-row gap-6 hover:shadow-md transition-all group relative ${notif.status === 'Não lida' ? 'border-primary/20 bg-primary/5 shadow-sm' : 'border-zinc-100'}`}
+            >
+              {notif.status === 'Não lida' && (
+                <div className="absolute top-4 left-4 w-2 h-2 bg-primary rounded-full" />
+              )}
+              
+              <div className="flex-shrink-0">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  notif.priority === 'Alta' ? 'bg-rose-50' : 
+                  notif.priority === 'Média' ? 'bg-amber-50' : 'bg-zinc-50'
+                }`}>
+                  {getTypeIcon(notif.type)}
+                </div>
+              </div>
+
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-3">
+                  <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${notif.priority === 'Alta' ? 'text-rose-500' : 'text-zinc-400'}`}>
+                    Prioridade {notif.priority}
+                  </span>
+                  <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">
+                    {new Date(notif.timestamp).toLocaleString('pt-BR')}
+                  </span>
+                </div>
+                <h3 className={`text-base font-bold ${notif.status === 'Não lida' ? 'text-zinc-900' : 'text-zinc-600'}`}>
+                  {notif.title}
+                </h3>
+                <p className="text-sm text-zinc-500 leading-relaxed max-w-2xl">{notif.description}</p>
+                
+                <div className="pt-2 flex flex-wrap gap-2">
+                  {notif.status === 'Não lida' && (
+                    <button 
+                      onClick={() => onUpdateNotification(notif.id, { status: 'Lida' })}
+                      className="h-8 px-4 bg-primary text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-opacity-90 transition-all"
+                    >
+                      Marcar como lida
+                    </button>
+                  )}
+                  {notif.relatedPath && (
+                    <button 
+                      onClick={() => {
+                        onUpdateNotification(notif.id, { status: 'Lida' });
+                        onNavigate(notif.relatedPath!);
+                      }}
+                      className="h-8 px-4 bg-zinc-100 text-zinc-600 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-zinc-200 transition-all flex items-center gap-2"
+                    >
+                      <Eye size={12} /> Ver Relacionado
+                    </button>
+                  )}
+                  {notif.status !== 'Arquivada' ? (
+                    <button 
+                      onClick={() => onUpdateNotification(notif.id, { status: 'Arquivada' })}
+                      className="h-8 px-4 border border-zinc-200 text-zinc-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-zinc-50 hover:text-zinc-600 transition-all flex items-center gap-2"
+                    >
+                      <Archive size={12} /> Arquivar
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => onUpdateNotification(notif.id, { status: 'Lida' })}
+                      className="h-8 px-4 border border-zinc-200 text-zinc-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-zinc-50 hover:text-zinc-600 transition-all"
+                    >
+                      Desarquivar
+                    </button>
+                  )}
+                   <button 
+                    onClick={() => onDeleteNotification(notif.id)}
+                    className="h-8 px-4 text-zinc-300 hover:text-rose-500 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))
+        ) : (
+          <div className="py-20 flex flex-col items-center justify-center bg-white border border-dashed border-zinc-200 rounded-3xl text-zinc-300 gap-4">
+            <Bell size={48} className="opacity-20" />
+            <p className="text-sm font-bold uppercase tracking-widest">Nenhuma notificação pendente no momento.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const TeachersView = ({ 
   teachers, 
   onAddTeacher,
@@ -1916,14 +2102,15 @@ const SettingsView = () => (
 
 export default function App() {
   const [session, setSession] = useState<{ user: User | null, isLoggedIn: boolean }>({ user: null, isLoggedIn: false });
-  const [currentView, setCurrentView] = useState<'dashboard' | 'courses' | 'teachers' | 'settings' | 'reports'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'courses' | 'teachers' | 'settings' | 'reports' | 'notifications'>('dashboard');
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
   const [teachers, setTeachers] = useState<User[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>(INITIAL_SUBJECTS);
   const [schedules, setSchedules] = useState<ScheduleEntry[]>(INITIAL_SCHEDULES);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
 
-  // Fetch users if admin
+  // Fetch users and notifications if admin
   useEffect(() => {
     if (session.isLoggedIn && session.user?.role === 'Admin') {
       const fetchUsers = async () => {
@@ -1937,11 +2124,62 @@ export default function App() {
           console.error("Failed to fetch users", err);
         }
       };
+
+      const fetchNotifications = async () => {
+        try {
+          const res = await fetch("/api/notifications", {
+            headers: { "Authorization": `Bearer ${localStorage.getItem("authToken")}` }
+          });
+          const data = await res.json();
+          if (res.ok) setNotifications(data);
+        } catch (err) {
+          console.error("Failed to fetch notifications", err);
+        }
+      };
+
       fetchUsers();
+      fetchNotifications();
+
+      // Poll for notifications every 30 seconds
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
     } else if (!session.isLoggedIn) {
       setTeachers(INITIAL_TEACHERS);
+      setNotifications([]);
     }
   }, [session.isLoggedIn, session.user]);
+
+  const updateNotification = async (id: string, updates: Partial<Notification>) => {
+    try {
+      const res = await fetch(`/api/notifications/${id}`, {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+        },
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        setNotifications(notifications.map(n => n.id === id ? { ...n, ...updates } : n));
+      }
+    } catch (err) {
+      console.error("Failed to update notification", err);
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    try {
+      const res = await fetch(`/api/notifications/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${localStorage.getItem("authToken")}` }
+      });
+      if (res.ok) {
+        setNotifications(notifications.filter(n => n.id !== id));
+      }
+    } catch (err) {
+      console.error("Failed to delete notification", err);
+    }
+  };
 
   const handleLogin = async (email: string, pass: string) => {
     try {
@@ -2137,6 +2375,15 @@ export default function App() {
 
         <nav className="flex-1 px-4 space-y-1">
           <SidebarItem icon={LayoutDashboard} label="Dashboard" active={currentView === 'dashboard' && !selectedTeacherId} onClick={() => { setCurrentView('dashboard'); setSelectedTeacherId(null); }} />
+          {session.user?.role === 'Admin' && (
+            <SidebarItem 
+              icon={Bell} 
+              label="Notificações" 
+              active={currentView === 'notifications' && !selectedTeacherId} 
+              onClick={() => { setCurrentView('notifications'); setSelectedTeacherId(null); }} 
+              badge={notifications.filter(n => n.status === 'Não lida').length}
+            />
+          )}
           <SidebarItem icon={Building2} label="Cursos e Disciplinas" active={currentView === 'courses' && !selectedTeacherId} onClick={() => { setCurrentView('courses'); setSelectedTeacherId(null); }} />
           <SidebarItem icon={Users} label="Docentes" active={(currentView === 'teachers' || !!selectedTeacherId) && !(selectedTeacherId === session.user?.id)} onClick={() => { setCurrentView('teachers'); setSelectedTeacherId(null); }} />
           <SidebarItem icon={FileText} label="Relatórios" active={currentView === 'reports' && !selectedTeacherId} onClick={() => { setCurrentView('reports'); setSelectedTeacherId(null); }} />
@@ -2221,6 +2468,14 @@ export default function App() {
                 )}
                 {currentView === 'reports' && <ReportsView />}
                 {currentView === 'settings' && <SettingsView />}
+                {currentView === 'notifications' && (
+                  <NotificationsView 
+                    notifications={notifications}
+                    onUpdateNotification={updateNotification}
+                    onDeleteNotification={deleteNotification}
+                    onNavigate={(path) => setCurrentView(path as any)}
+                  />
+                )}
               </>
             )}
           </motion.div>
