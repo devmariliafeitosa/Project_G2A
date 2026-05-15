@@ -25,11 +25,14 @@ export interface User {
   email: string;
   role: UserRole;
   registration: string;
+  siape?: string; // SIAPE registration code
   campus: string;
+  departamento?: string;
   regime: WorkRegime;
   leaveType: LeaveType;
   hasReducedWorkload: boolean;
   ingressoYear?: string;
+  dataIngresso?: string;
   birthDate?: string;
   phone?: string;
   cpf?: string;
@@ -40,7 +43,7 @@ export interface User {
   courseId?: string; // If coordinator, which course
   avatarUrl?: string;
   password?: string;
-  status?: 'Ativo' | 'Inativo';
+  status?: 'Ativo' | 'Inativo' | 'Afastado' | 'Licença';
 }
 
 export enum CourseType {
@@ -126,4 +129,29 @@ export interface Notification {
   status: NotificationStatus;
   priority: NotificationPriority;
   relatedPath?: string; // e.g., 'courses', 'teachers'
+}
+
+export interface ReportHistory {
+  id: string;
+  name: string;
+  user: string;
+  date: string;
+}
+
+export type OccurrenceType = 'Afastamento' | 'Substituição' | 'Alteração de Vínculo' | 'Remanejamento';
+export type OccurrenceStatus = 'Ativa' | 'Concluída' | 'Cancelada';
+
+export interface Occurrence {
+  id: string;
+  teacherId: string;
+  type: OccurrenceType;
+  startDate: string;
+  endDate?: string;
+  status: OccurrenceStatus;
+  reason: string;
+  documentUrl?: string;
+  needReplacement: boolean;
+  substituteTeacherId?: string;
+  affectedSubjectIds: string[];
+  impactDescription: string;
 }

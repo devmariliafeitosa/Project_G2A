@@ -60,6 +60,26 @@ const notifications = [
   }
 ];
 
+const reportHistory = [
+  { id: '1', name: 'Grade de Horários - 2024.1', user: 'Admin Geral', date: '14/05/2026 14:20' },
+  { id: '2', name: 'Lotação Docente - Geral', user: 'Admin Geral', date: '12/05/2026 09:15' },
+];
+
+const occurrences = [
+  {
+    id: "1",
+    teacherId: "2", // Maria Souza
+    type: "Afastamento",
+    startDate: "2026-06-01",
+    endDate: "2026-12-31",
+    status: "Ativa",
+    reason: "Doutorado",
+    needReplacement: true,
+    affectedSubjectIds: ["1", "2"], // Cálculo I, Álgebra Linear
+    impactDescription: "Afastamento integral para capacitação."
+  }
+];
+
 // Helper for general authentication
 const authenticate = (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
@@ -286,6 +306,17 @@ app.get("/api/notifications", adminOnly, (req, res) => {
   res.json(notifications);
 });
 
+app.post("/api/notifications", adminOnly, (req, res) => {
+  const newNotif = {
+    id: Date.now().toString(),
+    status: "Não lida",
+    timestamp: new Date().toISOString(),
+    ...req.body
+  };
+  notifications.unshift(newNotif);
+  res.status(201).json(newNotif);
+});
+
 app.patch("/api/notifications/:id", adminOnly, (req, res) => {
   const { id } = req.params;
   const index = notifications.findIndex(n => n.id === id);
@@ -302,6 +333,46 @@ app.delete("/api/notifications/:id", adminOnly, (req, res) => {
 
   notifications.splice(index, 1);
   res.status(204).send();
+});
+
+// Report History Endpoints (Admin Only)
+app.get("/api/reports/history", adminOnly, (req, res) => {
+  res.json(reportHistory);
+});
+
+app.post("/api/reports/history", adminOnly, (req, res) => {
+  const newEntry = {
+    id: Date.now().toString(),
+    user: "Admin Geral", // Ideally from req.user
+    date: new Date().toLocaleString('pt-BR'),
+    ...req.body
+  };
+  reportHistory.unshift(newEntry);
+  res.status(201).json(newEntry);
+});
+
+// Occurrences Endpoints (Admin Only)
+app.get("/api/occurrences", adminOnly, (req, res) => {
+  res.json(occurrences);
+});
+
+app.post("/api/occurrences", adminOnly, (req, res) => {
+  const newOccurrence = {
+    id: Date.now().toString(),
+    status: "Ativa",
+    ...req.body
+  };
+  occurrences.unshift(newOccurrence);
+  res.status(201).json(newOccurrence);
+});
+
+app.patch("/api/occurrences/:id", adminOnly, (req, res) => {
+  const { id } = req.params;
+  const index = occurrences.findIndex(o => o.id === id);
+  if (index === -1) return res.status(404).json({ error: "Ocorrência não encontrada" });
+
+  occurrences[index] = { ...occurrences[index], ...req.body };
+  res.json(occurrences[index]);
 });
 
 app.post("/api/forgot-password", (req, res) => {
