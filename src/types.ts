@@ -83,7 +83,7 @@ export interface Subject {
   workload: number;
   courseId: string;
   period: number; // Semester or Year
-  type: 'Obrigatória' | 'Optativa';
+  type: 'Obrigatória' | 'Opcional';
   color?: string; // For the pastel colors requested
 }
 

@@ -12,6 +12,7 @@ import {
   Filter, 
   MoreVertical, 
   Trash2, 
+  Edit2,
   Edit3, 
   Eye, 
   EyeOff,
@@ -557,20 +558,27 @@ const CoursesView = ({
   subjects, 
   onAddCourse, 
   onAddSubject,
-  onUpdateCourse
+  onUpdateCourse,
+  onDeleteSubject,
+  onUpdateSubject
 }: { 
   courses: Course[], 
   teachers: User[], 
   subjects: Subject[], 
   onAddCourse: (name: string, level: Level, type: CourseType, duration: 'Semestral' | 'Anual') => void,
-  onAddSubject: (name: string, workload: number, courseId: string, period: number, type: 'Obrigatória' | 'Optativa') => void,
-  onUpdateCourse: (course: Course) => void
+  onAddSubject: (name: string, workload: number, courseId: string, period: number, type: 'Obrigatória' | 'Opcional') => void,
+  onUpdateCourse: (course: Course) => void,
+  onDeleteSubject: (id: string) => void,
+  onUpdateSubject: (subject: Subject) => void
 }) => {
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [addingSubjectTo, setAddingSubjectTo] = useState<string | null>(null);
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
+  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+  const [confirmingDeleteSubjectId, setConfirmingDeleteSubjectId] = useState<string | null>(null);
+
   const [newCourse, setNewCourse] = useState({ 
     name: '', 
     level: Level.Superior, 
@@ -582,7 +590,7 @@ const CoursesView = ({
     name: '', 
     workload: 80, 
     period: 1, 
-    type: 'Obrigatória' as 'Obrigatória' | 'Optativa' 
+    type: 'Obrigatória' as 'Obrigatória' | 'Opcional' 
   });
 
   const filteredCourses = useMemo(() => {
@@ -715,7 +723,7 @@ const CoursesView = ({
                       </div>
 
                       {addingSubjectTo === course.id && (
-                        <div className="p-4 bg-white border border-zinc-200 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-3 items-end shadow-sm animate-in zoom-in-95 duration-200">
+                        <div className="p-4 bg-white border border-zinc-200 rounded-xl grid grid-cols-1 md:grid-cols-5 gap-3 items-end shadow-sm animate-in zoom-in-95 duration-200">
                           <div className="space-y-1">
                             <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Nome</label>
                             <input value={newSubject.name} onChange={e => setNewSubject({...newSubject, name: e.target.value})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none focus:border-primary/30" />
@@ -728,8 +736,32 @@ const CoursesView = ({
                             <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Período</label>
                             <input type="number" value={newSubject.period} onChange={e => setNewSubject({...newSubject, period: parseInt(e.target.value)})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none" />
                           </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Tipo</label>
+                            <select 
+                              value={newSubject.type} 
+                              onChange={e => setNewSubject({...newSubject, type: e.target.value as 'Obrigatória' | 'Opcional'})} 
+                              className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none bg-white font-bold"
+                            >
+                              <option value="Obrigatória">Obrigatória</option>
+                              <option value="Opcional">Opcional</option>
+                            </select>
+                          </div>
                           <div className="flex gap-2">
-                            <button onClick={() => { onAddSubject(newSubject.name, newSubject.workload, course.id, newSubject.period, newSubject.type); setAddingSubjectTo(null); }} className="flex-1 bg-primary text-white h-8 rounded text-[10px] font-bold uppercase tracking-widest">Salvar</button>
+                            <button 
+                              onClick={() => { 
+                                if (!newSubject.name || !newSubject.workload || !newSubject.period) {
+                                  alert("Preencha todos os campos da disciplina.");
+                                  return;
+                                }
+                                onAddSubject(newSubject.name, newSubject.workload, course.id, newSubject.period, newSubject.type); 
+                                setAddingSubjectTo(null); 
+                                setNewSubject({ name: '', workload: 80, period: 1, type: 'Obrigatória' });
+                              }} 
+                              className="flex-1 bg-primary text-white h-8 rounded text-[10px] font-bold uppercase tracking-widest"
+                            >
+                              Salvar
+                            </button>
                             <button onClick={() => setAddingSubjectTo(null)} className="flex-1 bg-zinc-100 text-zinc-500 h-8 rounded text-[10px] font-bold uppercase tracking-widest">Sair</button>
                           </div>
                         </div>
@@ -740,11 +772,24 @@ const CoursesView = ({
                           <div key={sub.id} className="bg-white p-3 border border-zinc-200 rounded-lg flex items-center justify-between group/sub hover:border-primary/20 transition-all">
                             <div>
                               <p className="text-xs font-bold text-zinc-800">{sub.name}</p>
-                              <p className="text-[9px] text-zinc-400 mt-0.5 font-sans uppercase font-medium">{sub.period}º Período • {sub.workload}h</p>
+                              <p className="text-[9px] text-zinc-400 mt-0.5 font-sans uppercase font-medium">
+                                {sub.period}º Período • {sub.workload}h • <span className={sub.type === 'Obrigatória' ? 'text-zinc-500' : 'text-primary'}>{sub.type}</span>
+                              </p>
                             </div>
-                            <button className="text-zinc-200 hover:text-alert opacity-0 group-hover/sub:opacity-100 transition-all">
-                              <Trash2 size={12} />
-                            </button>
+                            <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-all">
+                              <button 
+                                onClick={() => setEditingSubject(sub)}
+                                className="p-1 text-zinc-400 hover:text-primary transition-all rounded hover:bg-zinc-50"
+                              >
+                                <Edit2 size={12} />
+                              </button>
+                              <button 
+                                onClick={() => setConfirmingDeleteSubjectId(sub.id)}
+                                className="p-1 text-zinc-400 hover:text-alert transition-all rounded hover:bg-zinc-50"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -767,6 +812,119 @@ const CoursesView = ({
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {editingSubject && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 space-y-6"
+            >
+              <h3 className="text-xl font-bold text-zinc-900">Editar Disciplina</h3>
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Nome</label>
+                  <input 
+                    value={editingSubject.name}
+                    onChange={e => setEditingSubject({...editingSubject, name: e.target.value})}
+                    className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm outline-none focus:border-primary/30"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Carga (h)</label>
+                    <input 
+                      type="number"
+                      value={editingSubject.workload}
+                      onChange={e => setEditingSubject({...editingSubject, workload: parseInt(e.target.value)})}
+                      className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Período</label>
+                    <input 
+                      type="number"
+                      value={editingSubject.period}
+                      onChange={e => setEditingSubject({...editingSubject, period: parseInt(e.target.value)})}
+                      className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Tipo</label>
+                  <select 
+                    value={editingSubject.type} 
+                    onChange={e => setEditingSubject({...editingSubject, type: e.target.value as 'Obrigatória' | 'Opcional'})}
+                    className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm outline-none bg-white font-bold"
+                  >
+                    <option value="Obrigatória">Obrigatória</option>
+                    <option value="Opcional">Opcional</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => {
+                    if (!editingSubject.name || !editingSubject.workload || !editingSubject.period) {
+                      alert("Preencha todos os campos.");
+                      return;
+                    }
+                    onUpdateSubject(editingSubject);
+                    setEditingSubject(null);
+                  }}
+                  className="flex-1 h-12 bg-primary text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-opacity-90 transition-all shadow-lg"
+                >
+                  Salvar Alterações
+                </button>
+                <button 
+                  onClick={() => setEditingSubject(null)}
+                  className="flex-1 h-12 bg-zinc-100 text-zinc-500 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {confirmingDeleteSubjectId && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-8 space-y-6 text-center"
+            >
+              <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto">
+                <Trash2 size={32} />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-zinc-900">Excluir Disciplina?</h3>
+                <p className="text-zinc-500 text-sm">Esta ação não pode ser desfeita. Deseja realmente remover esta disciplina?</p>
+              </div>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => {
+                    onDeleteSubject(confirmingDeleteSubjectId);
+                    setConfirmingDeleteSubjectId(null);
+                  }}
+                  className="flex-1 h-12 bg-rose-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg"
+                >
+                  Excluir
+                </button>
+                <button 
+                  onClick={() => setConfirmingDeleteSubjectId(null)}
+                  className="flex-1 h-12 bg-zinc-100 text-zinc-500 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                >
+                  Manter
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -1856,13 +2014,23 @@ export default function App() {
     setCourses([...courses, { id: Date.now().toString(), name, campus: 'Tauá', level, type, durationType }]);
   };
 
-  const addSubject = (name: string, workload: number, courseId: string, period: number, type: 'Obrigatória' | 'Optativa') => {
+  const addSubject = (name: string, workload: number, courseId: string, period: number, type: 'Obrigatória' | 'Opcional') => {
     const colorIndex = subjects.length % PASTEL_COLORS.length;
     setSubjects([...subjects, { id: Date.now().toString(), name, workload, courseId, period, type, color: PASTEL_COLORS[colorIndex] }]);
   };
 
   const updateCourse = (course: Course) => {
     setCourses(courses.map(c => c.id === course.id ? course : c));
+  };
+
+  const deleteSubject = (id: string) => {
+    setSubjects(subjects.filter(s => s.id !== id));
+    // Also remove from schedules
+    setSchedules(schedules.filter(s => s.subjectId !== id));
+  };
+
+  const updateSubject = (subject: Subject) => {
+    setSubjects(subjects.map(s => s.id === subject.id ? subject : s));
   };
 
   const addTeacher = async (data: any) => {
@@ -2028,7 +2196,18 @@ export default function App() {
                     onAddSchedule={addSchedule}
                   />
                 )}
-                {currentView === 'courses' && <CoursesView courses={courses} teachers={teachers} subjects={subjects} onAddCourse={addCourse} onAddSubject={addSubject} onUpdateCourse={updateCourse} />}
+                {currentView === 'courses' && (
+                  <CoursesView 
+                    courses={courses} 
+                    teachers={teachers} 
+                    subjects={subjects} 
+                    onAddCourse={addCourse} 
+                    onAddSubject={addSubject} 
+                    onUpdateCourse={updateCourse} 
+                    onDeleteSubject={deleteSubject}
+                    onUpdateSubject={updateSubject}
+                  />
+                )}
                 {currentView === 'teachers' && (
                   <TeachersView 
                     teachers={teachers} 
