@@ -42,6 +42,7 @@ import {
   ArrowRightLeft,
   X,
   Check,
+  History,
   UserPlus as UserPlusIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -159,11 +160,18 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, badge }: { icon: any,
       <Icon size={18} />
       <span className="text-sm font-medium">{label}</span>
     </div>
-    {badge !== undefined && badge > 0 && (
-      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${active ? 'bg-white text-primary' : 'bg-rose-500 text-white'}`}>
-        {badge}
-      </span>
-    )}
+    <AnimatePresence>
+      {badge !== undefined && badge > 0 && (
+        <motion.span 
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          key={badge}
+          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${active ? 'bg-white text-primary' : 'bg-rose-500 text-white'}`}
+        >
+          {badge}
+        </motion.span>
+      )}
+    </AnimatePresence>
   </button>
 );
 
@@ -2345,6 +2353,7 @@ const TeacherOccurrencesView = ({
   const [typeFilter, setTypeFilter] = useState<OccurrenceType | 'Todos'>('Todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOccurrence, setSelectedOccurrence] = useState<Occurrence | null>(null);
+  const [viewHistoryId, setViewHistoryId] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState<Partial<Occurrence>>({
@@ -2493,6 +2502,14 @@ const TeacherOccurrencesView = ({
                   >
                     <Edit size={12} /> Editar
                   </button>
+                  <button 
+                    onClick={() => setViewHistoryId(viewHistoryId === occ.id ? null : occ.id)}
+                    className={`h-9 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+                      viewHistoryId === occ.id ? 'bg-zinc-900 text-white' : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-100'
+                    }`}
+                  >
+                    <History size={12} /> Log
+                  </button>
                   {occ.status === 'Ativa' && (
                     <button 
                       onClick={() => onUpdateOccurrence(occ.id, { status: 'Concluída' })}
@@ -2503,6 +2520,34 @@ const TeacherOccurrencesView = ({
                   )}
                 </div>
               </div>
+
+              {viewHistoryId === occ.id && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  className="mt-6 pt-6 border-t border-zinc-100 overflow-hidden"
+                >
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4 flex items-center gap-2">
+                    <History size={12} /> Histórico de Alterações
+                  </h4>
+                  <div className="space-y-3">
+                    {occ.auditLogs.map((log) => (
+                      <div key={log.id} className="flex items-start gap-4 p-3 bg-zinc-50 rounded-xl">
+                        <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 mt-1.5" />
+                        <div className="flex-1">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[11px] font-bold text-zinc-900">{log.action}</span>
+                            <span className="text-[9px] text-zinc-400 font-sans">
+                              {new Date(log.timestamp).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-zinc-500 font-sans">Realizado por: <span className="font-bold">{log.user}</span></p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
             </motion.div>
           );
         })}
@@ -2754,8 +2799,8 @@ export default function App() {
       fetchReportHistory();
       fetchOccurrences();
 
-      // Poll for notifications every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000);
+      // Poll for notifications every 5 seconds
+      const interval = setInterval(fetchNotifications, 5000);
       return () => clearInterval(interval);
     } else if (!session.isLoggedIn) {
       setTeachers(INITIAL_TEACHERS);
@@ -3007,22 +3052,52 @@ export default function App() {
       const teacher = teachers.find(t => t.id === entry.teacherId);
       const subject = subjects.find(s => s.id === entry.subjectId);
       const slot = TIME_SLOTS.find(ts => ts.id === entry.timeSlotId);
+      const course = courses.find(c => c.id === entry.courseId);
 
-      // 🚨 Conflict Detection
-      const conflict = schedules.find(s => 
+      // 🚨 Teacher Conflict Detection (Same teacher, same time)
+      const teacherConflict = schedules.find(s => 
         s.teacherId === entry.teacherId && 
         s.dayOfWeek === entry.dayOfWeek && 
         s.timeSlotId === entry.timeSlotId
       );
 
-      if (conflict) {
+      if (teacherConflict) {
+        const conflictingSubject = subjects.find(s => s.id === teacherConflict.subjectId);
         createNotification({
           type: 'Alerta',
-          title: 'Conflito de Horário Detectado',
-          description: `O docente ${teacher?.name || 'Desconhecido'} possui um conflito na ${entry.dayOfWeek} às ${slot?.label || entry.timeSlotId} com a disciplina ${subject?.name || 'Desconhecida'}.`,
+          title: 'Conflito de Horário: Docente',
+          description: `O docente ${teacher?.name || 'Desconhecido'} já possui uma aula de "${conflictingSubject?.name || 'outra disciplina'}" programada para as ${slot?.label || entry.timeSlotId} na ${entry.dayOfWeek}.`,
           priority: 'Alta',
           relatedPath: 'dashboard'
         });
+        
+        // As per "validação", we should probably warn the user
+        if (!window.confirm(`AVISO: O docente ${teacher?.name} já tem aula neste horário (${conflictingSubject?.name}). Deseja manter a alocação dupla?`)) {
+          return;
+        }
+      }
+
+      // 🚨 Course Conflict Detection (Same course/period, same time)
+      const courseConflict = schedules.find(s => 
+        s.courseId === entry.courseId && 
+        s.period === entry.period &&
+        s.dayOfWeek === entry.dayOfWeek && 
+        s.timeSlotId === entry.timeSlotId
+      );
+
+      if (courseConflict) {
+        const conflictingSubject = subjects.find(s => s.id === courseConflict.subjectId);
+        createNotification({
+          type: 'Alerta',
+          title: 'Conflito de Horário: Turma',
+          description: `O curso ${course?.name} (${entry.period}º Período) já possui uma aula de "${conflictingSubject?.name}" neste horário.`,
+          priority: 'Alta',
+          relatedPath: 'dashboard'
+        });
+
+        if (!window.confirm(`AVISO: Esta turma já tem aula neste horário (${conflictingSubject?.name}). Deseja manter a alocação dupla?`)) {
+          return;
+        }
       }
 
       // 🚨 Workload Limit Check
@@ -3035,6 +3110,23 @@ export default function App() {
           description: `O docente ${teacher?.name || 'Desconhecido'} excedeu o limite de ${limit} horas semanais ao ser alocado em ${subject?.name || 'uma nova disciplina'}.`,
           priority: 'Alta',
           relatedPath: 'teachers'
+        });
+      }
+      
+      // 🚨 Occurrence Check (Afastamento)
+      const activeOccurrence = occurrences.find(occ => 
+        occ.teacherId === entry.teacherId && 
+        occ.status === 'Ativa' && 
+        (occ.type === 'Afastamento' || occ.type === 'Licença')
+      );
+
+      if (activeOccurrence) {
+        createNotification({
+          type: 'Alerta',
+          title: 'Docente em Afastamento',
+          description: `Alocação realizada para ${teacher?.name}, que se encontra em regime de "${activeOccurrence.type}" (${activeOccurrence.reason}).`,
+          priority: 'Média',
+          relatedPath: 'occurrences'
         });
       }
     }

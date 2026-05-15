@@ -76,7 +76,10 @@ const occurrences = [
     reason: "Doutorado",
     needReplacement: true,
     affectedSubjectIds: ["1", "2"], // Cálculo I, Álgebra Linear
-    impactDescription: "Afastamento integral para capacitação."
+    impactDescription: "Afastamento integral para capacitação.",
+    auditLogs: [
+      { id: '1', user: 'Administrador Geral', action: 'Criação da ocorrência', timestamp: '2026-05-14T15:00:00Z' }
+    ]
   }
 ];
 
@@ -356,22 +359,50 @@ app.get("/api/occurrences", adminOnly, (req, res) => {
   res.json(occurrences);
 });
 
-app.post("/api/occurrences", adminOnly, (req, res) => {
+app.post("/api/occurrences", adminOnly, (req: any, res) => {
   const newOccurrence = {
     id: Date.now().toString(),
     status: "Ativa",
-    ...req.body
+    ...req.body,
+    auditLogs: [
+      {
+        id: Date.now().toString(),
+        user: req.user.name,
+        action: "Criação da ocorrência",
+        timestamp: new Date().toISOString()
+      }
+    ]
   };
   occurrences.unshift(newOccurrence);
   res.status(201).json(newOccurrence);
 });
 
-app.patch("/api/occurrences/:id", adminOnly, (req, res) => {
+app.patch("/api/occurrences/:id", adminOnly, (req: any, res) => {
   const { id } = req.params;
   const index = occurrences.findIndex(o => o.id === id);
   if (index === -1) return res.status(404).json({ error: "Ocorrência não encontrada" });
 
-  occurrences[index] = { ...occurrences[index], ...req.body };
+  const oldStatus = occurrences[index].status;
+  const newStatus = req.body.status;
+  let action = "Edição de dados";
+
+  if (newStatus && newStatus !== oldStatus) {
+    if (newStatus === "Concluída") action = "Encerramento da ocorrência";
+    else if (newStatus === "Cancelada") action = "Cancelamento da ocorrência";
+  }
+
+  const logEntry = {
+    id: Date.now().toString(),
+    user: req.user.name,
+    action: action,
+    timestamp: new Date().toISOString()
+  };
+
+  occurrences[index] = { 
+    ...occurrences[index], 
+    ...req.body,
+    auditLogs: [logEntry, ...occurrences[index].auditLogs]
+  };
   res.json(occurrences[index]);
 });
 

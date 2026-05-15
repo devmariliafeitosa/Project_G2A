@@ -141,6 +141,13 @@ export interface ReportHistory {
 export type OccurrenceType = 'Afastamento' | 'Substituição' | 'Alteração de Vínculo' | 'Remanejamento';
 export type OccurrenceStatus = 'Ativa' | 'Concluída' | 'Cancelada';
 
+export interface OccurrenceAuditLog {
+  id: string;
+  user: string;
+  action: string;
+  timestamp: string;
+}
+
 export interface Occurrence {
   id: string;
   teacherId: string;
@@ -154,4 +161,5 @@ export interface Occurrence {
   substituteTeacherId?: string;
   affectedSubjectIds: string[];
   impactDescription: string;
+  auditLogs: OccurrenceAuditLog[];
 }
