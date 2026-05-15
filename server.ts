@@ -29,22 +29,30 @@ const users = [
   }
 ];
 
-// Helper for Admin check
-const adminOnly = (req: any, res: any, next: any) => {
+// Helper for general authentication
+const authenticate = (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: "Não autorizado" });
 
   try {
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    if (decoded.role === "Admin") {
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(401).json({ error: "Token inválido" });
+  }
+};
+
+// Helper for Admin check
+const adminOnly = (req: any, res: any, next: any) => {
+  authenticate(req, res, () => {
+    if (req.user.role === "Admin") {
       next();
     } else {
       res.status(403).json({ error: "Acesso negado: Apenas administradores" });
     }
-  } catch (err) {
-    res.status(401).json({ error: "Token inválido" });
-  }
+  });
 };
 
 // Auth Endpoints
@@ -79,6 +87,32 @@ app.post("/api/login", async (req, res) => {
     campus: user.campus,
     status: user.status
   } });
+});
+
+app.post("/api/change-password", authenticate, (req: any, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const user = users.find(u => u.id === req.user.id);
+
+  if (!user) {
+    return res.status(404).json({ error: "Usuário não encontrado" });
+  }
+
+  if (!bcrypt.compareSync(currentPassword, user.password)) {
+    return res.status(400).json({ error: "Senha atual inválida" });
+  }
+
+  // Security validation (Server side)
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/;
+  if (!passwordRegex.test(newPassword)) {
+    return res.status(400).json({ error: "A nova senha não atende aos critérios de segurança" });
+  }
+
+  if (bcrypt.compareSync(newPassword, user.password)) {
+    return res.status(400).json({ error: "A nova senha não pode ser igual à senha atual" });
+  }
+
+  user.password = bcrypt.hashSync(newPassword, 10);
+  res.json({ message: "Senha alterada com sucesso" });
 });
 
 app.post("/api/refresh", (req, res) => {

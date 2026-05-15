@@ -763,15 +763,91 @@ const TeacherProfileView = ({
   teacher, 
   onBack, 
   onUpdate,
-  currentUserRole
+  currentUserRole,
+  currentUserId
 }: { 
   teacher: User, 
   onBack: () => void, 
   onUpdate: (u: User) => void,
-  currentUserRole?: UserRole
+  currentUserRole?: UserRole,
+  currentUserId?: string
 }) => {
   const limit = getWorkloadLimit(teacher.role);
   const isAdmin = currentUserRole === 'Admin';
+  const isOwnProfile = teacher.id === currentUserId;
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validatePassword = (pass: string) => {
+    const requirements = [];
+    if (pass.length < 8) requirements.push("Mínimo de 8 caracteres");
+    if (!/[A-Z]/.test(pass)) requirements.push("Letras maiúsculas");
+    if (!/[a-z]/.test(pass)) requirements.push("Letras minúsculas");
+    if (!/\d/.test(pass)) requirements.push("Ao menos um número");
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pass)) requirements.push("Ao menos um caractere especial (!@#$)");
+    return requirements;
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordError("Todos os campos são obrigatórios");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("A senha digitada e sua confirmação não correspondem.");
+      return;
+    }
+
+    const requirements = validatePassword(passwordForm.newPassword);
+    if (requirements.length > 0) {
+      setPasswordError(`A nova senha não atende aos critérios:\n- ${requirements.join('\n- ')}`);
+      return;
+    }
+
+    if (passwordForm.newPassword === passwordForm.currentPassword) {
+      setPasswordError("A nova senha não pode ser igual à senha atual.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/change-password", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+        },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPasswordSuccess("Senha alterada com sucesso!");
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        // After success, maybe close modal after a delay
+        setTimeout(() => setIsChangingPassword(false), 2000);
+      } else {
+        setPasswordError(data.error || "Erro ao alterar senha");
+      }
+    } catch (err: any) {
+      setPasswordError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   
   return (
     <div className="space-y-10 animate-in slide-in-from-right duration-500">
@@ -851,7 +927,15 @@ const TeacherProfileView = ({
                 <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Painel Operacional</h4>
               </div>
               <div className="flex flex-col gap-2">
-                {isAdmin && (
+                {isOwnProfile && (
+                  <button 
+                    onClick={() => setIsChangingPassword(true)}
+                    className="w-full h-11 bg-primary text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-opacity-90 transition-all shadow-md flex items-center justify-center gap-2"
+                  >
+                    <Settings size={14} /> Alterar Senha
+                  </button>
+                )}
+                {isAdmin && !isOwnProfile && (
                   <button 
                     onClick={() => onUpdate({ ...teacher, status: teacher.status === 'Inativo' ? 'Ativo' : 'Inativo' })}
                     className={`w-full h-11 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${teacher.status === 'Inativo' ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-900 hover:text-white'}`}
@@ -859,11 +943,100 @@ const TeacherProfileView = ({
                     {teacher.status === 'Inativo' ? 'Reativar Usuário' : 'Desativar Usuário'}
                   </button>
                 )}
-                <button className="w-full h-11 bg-rose-50 rounded-xl text-[10px] font-bold uppercase tracking-widest text-rose-500 hover:bg-rose-500 hover:text-white transition-all">Remover do Campus</button>
+                {!isOwnProfile && (
+                  <button className="w-full h-11 bg-rose-50 rounded-xl text-[10px] font-bold uppercase tracking-widest text-rose-500 hover:bg-rose-500 hover:text-white transition-all">Remover do Campus</button>
+                )}
               </div>
            </div>
         </aside>
       </div>
+
+      <AnimatePresence>
+        {isChangingPassword && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 space-y-6"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-zinc-900">Alterar Senha</h3>
+                <button onClick={() => setIsChangingPassword(false)} className="text-zinc-400 hover:text-zinc-600">
+                  <ArrowLeft size={20} className="rotate-90 md:rotate-0" />
+                </button>
+              </div>
+
+              {passwordError && (
+                <div className="p-3 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl text-[10px] font-bold whitespace-pre-line leading-relaxed">
+                  {passwordError}
+                </div>
+              )}
+
+              {passwordSuccess && (
+                <div className="p-3 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl text-[10px] font-bold flex items-center gap-2">
+                  <CheckCircle2 size={16} />
+                  {passwordSuccess}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Senha Atual</label>
+                  <input 
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={e => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+                    className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm outline-none focus:border-primary/30"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Nova Senha</label>
+                  <input 
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                    className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm outline-none focus:border-primary/30"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Confirmação da Nova Senha</label>
+                  <input 
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+                    className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm outline-none focus:border-primary/30"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest leading-relaxed border-t border-zinc-100 pt-4">
+                  Critérios: Min. 8 caracteres, letras maiúsculas/minúsculas, número e caractere especial (!@#$).
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button 
+                  onClick={handleChangePassword}
+                  disabled={isSubmitting}
+                  className="flex-1 h-12 bg-primary text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-opacity-90 transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : "Salvar Nova Senha"}
+                </button>
+                <button 
+                  onClick={() => setIsChangingPassword(false)}
+                  className="flex-1 h-12 bg-zinc-100 text-zinc-500 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all font-sans"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -887,7 +1060,6 @@ const TeachersView = ({
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [confirmingEditId, setConfirmingEditId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'alert' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -1140,27 +1312,31 @@ const TeachersView = ({
                   <span className={`text-sm font-bold ${(teacher.cargaHoraria || 0) > 20 ? 'text-alert' : 'text-zinc-900'}`}>{teacher.cargaHoraria || 0}h</span>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2 text-zinc-300">
-                    <button onClick={() => onSelectTeacher(teacher.id)} className="p-2 hover:text-primary transition-colors" title="Visualizar Perfil">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <button 
+                      onClick={() => onSelectTeacher(teacher.id)} 
+                      className="p-2 text-zinc-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all" 
+                      title="Visualizar Perfil"
+                    >
                       <Eye size={18} />
                     </button>
+                    {isAdmin && (
+                      <button 
+                        onClick={() => handleEdit(teacher)} 
+                        className="p-2 text-zinc-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all" 
+                        title="Editar Docente"
+                      >
+                        <Edit3 size={18} />
+                      </button>
+                    )}
                     {isAdmin && teacher.id !== currentUserId && (
-                      <>
-                        <button 
-                          onClick={() => setConfirmingEditId(teacher.id)} 
-                          className="p-2 hover:text-amber-500 transition-colors" 
-                          title="Editar Docente"
-                        >
-                          <Edit3 size={18} />
-                        </button>
-                        <button 
-                          onClick={() => setDeletingId(teacher.id)} 
-                          className="p-2 hover:text-alert transition-colors" 
-                          title="Excluir Docente"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </>
+                      <button 
+                        onClick={() => setDeletingId(teacher.id)} 
+                        className="p-2 text-zinc-400 hover:text-alert hover:bg-rose-50 rounded-lg transition-all" 
+                        title="Excluir Docente"
+                      >
+                        <Trash2 size={18} />
+                      </button>
                     )}
                   </div>
                 </td>
@@ -1175,47 +1351,6 @@ const TeachersView = ({
           </tbody>
         </table>
       </div>
-
-      <AnimatePresence>
-        {confirmingEditId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-zinc-900/40 backdrop-blur-sm">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 space-y-6"
-            >
-              <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto">
-                <Edit3 size={32} />
-              </div>
-              <div className="text-center space-y-2">
-                <h3 className="text-xl font-bold text-zinc-900">Editar Docente?</h3>
-                <p className="text-zinc-500 text-sm">
-                  Deseja realmente alterar as informações do docente <strong>{teachers.find(t => t.id === confirmingEditId)?.name}</strong>?
-                </p>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button 
-                  onClick={() => {
-                    const teacher = teachers.find(t => t.id === confirmingEditId);
-                    if (teacher) handleEdit(teacher);
-                    setConfirmingEditId(null);
-                  }}
-                  className="flex-1 h-11 bg-amber-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-amber-600 transition-all shadow-lg shadow-amber-200"
-                >
-                  Sim, Editar
-                </button>
-                <button 
-                  onClick={() => setConfirmingEditId(null)}
-                  className="flex-1 h-11 bg-zinc-100 text-zinc-500 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all font-sans"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {deletingId && (
@@ -1584,6 +1719,7 @@ export default function App() {
                 onBack={() => setSelectedTeacherId(null)}
                 onUpdate={updateTeacher}
                 currentUserRole={session.user?.role}
+                currentUserId={session.user?.id}
               />
             ) : (
               <>
