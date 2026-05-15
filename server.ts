@@ -25,7 +25,15 @@ const users = [
     campus: "Tauá",
     status: "Ativo",
     cargaHoraria: 0,
-    disciplinasMinistradas: []
+    disciplinasMinistradas: [],
+    birthDate: "",
+    phone: "",
+    areaAtuacao: "",
+    cpf: "",
+    ingressoYear: "",
+    regime: "40h/DE (Dedicação Exclusiva)",
+    leaveType: "Ativo",
+    hasReducedWorkload: false
   }
 ];
 
@@ -115,6 +123,31 @@ app.post("/api/change-password", authenticate, (req: any, res) => {
   res.json({ message: "Senha alterada com sucesso" });
 });
 
+app.put("/api/profile", authenticate, (req: any, res) => {
+  const user = users.find(u => u.id === req.user.id);
+  
+  if (!user) {
+    return res.status(404).json({ error: "Usuário não encontrado" });
+  }
+
+  const { name, email, birthDate, phone, areaAtuacao } = req.body;
+
+  // Validate required fields
+  if (!name || !email || !areaAtuacao) {
+    return res.status(400).json({ error: "Campos Nome, E-mail e Área de Atuação são obrigatórios" });
+  }
+
+  // Update only allowed fields
+  user.name = name;
+  user.email = email;
+  user.birthDate = birthDate;
+  user.phone = phone;
+  user.areaAtuacao = areaAtuacao;
+
+  const { password, ...safeUser } = user;
+  res.json(safeUser);
+});
+
 app.post("/api/refresh", (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(401).json({ error: "Token não fornecido" });
@@ -172,6 +205,9 @@ app.post("/api/users", adminOnly, (req, res) => {
     status: "Ativo",
     cargaHoraria: 0,
     disciplinasMinistradas: [],
+    regime: req.body.regime || "40h/DE (Dedicação Exclusiva)",
+    leaveType: req.body.leaveType || "Ativo",
+    hasReducedWorkload: req.body.hasReducedWorkload || false,
     password: bcrypt.hashSync(password || "ifce123", 10)
   };
 

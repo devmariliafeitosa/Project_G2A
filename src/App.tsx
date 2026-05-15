@@ -58,6 +58,18 @@ const TIME_SLOTS = [
   { id: 't4', label: '16:25 às 17:30', period: 'Tarde' },
 ];
 
+const AREAS_DE_ATUACAO = [
+  'Ciências Exatas e da Terra',
+  'Ciências Humanas e Sociais',
+  'Engenharias e Controle Industrial',
+  'Informação e Comunicação',
+  'Recursos Naturais e Produção',
+  'Gestão, Negócios e Turismo',
+  'Educação e Atendimento Especializado',
+  'Infraestrutura e Design',
+  'Saúde e Ambiente'
+];
+
 const PASTEL_COLORS = [
   'bg-rose-100 border-rose-200 text-rose-700',
   'bg-blue-100 border-blue-200 text-blue-700',
@@ -784,6 +796,22 @@ const TeacherProfileView = ({
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileData, setProfileData] = useState({
+    name: teacher.name,
+    email: teacher.email,
+    birthDate: teacher.birthDate || '',
+    phone: teacher.phone || '',
+    areaAtuacao: teacher.areaAtuacao || ''
+  });
+  const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  const hasProfileChanges = useMemo(() => {
+    return profileData.name !== teacher.name ||
+           profileData.email !== teacher.email ||
+           profileData.birthDate !== (teacher.birthDate || '') ||
+           profileData.phone !== (teacher.phone || '') ||
+           profileData.areaAtuacao !== (teacher.areaAtuacao || '');
+  }, [profileData, teacher]);
 
   const validatePassword = (pass: string) => {
     const requirements = [];
@@ -848,6 +876,43 @@ const TeacherProfileView = ({
       setIsSubmitting(false);
     }
   };
+
+  const handleUpdateProfile = async () => {
+    setProfileMessage(null);
+    if (!profileData.name || !profileData.email || !profileData.areaAtuacao) {
+      setProfileMessage({ type: 'error', text: "Nome, E-mail e Área de Atuação são obrigatórios" });
+      return;
+    }
+    
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
+      setProfileMessage({ type: 'error', text: "Formato de e-mail institucional inválido" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+        },
+        body: JSON.stringify(profileData),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setProfileMessage({ type: 'success', text: "Perfil atualizado com sucesso!" });
+        onUpdate(data);
+        setTimeout(() => setProfileMessage(null), 4000);
+      } else {
+        setProfileMessage({ type: 'error', text: data.error || "Erro ao atualizar perfil" });
+      }
+    } catch (err: any) {
+      setProfileMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   
   return (
     <div className="space-y-10 animate-in slide-in-from-right duration-500">
@@ -868,15 +933,119 @@ const TeacherProfileView = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div className="lg:col-span-2 space-y-8">
            <div className="bg-white p-10 rounded-[2.5rem] border border-zinc-100 shadow-sm space-y-10">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 border-b border-zinc-50 pb-10">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">Área de Atuação</p>
-                  <p className="text-base font-bold text-zinc-800">{teacher.areaAtuacao || 'Não definida'}</p>
+              {profileMessage && (
+                <div className={`p-4 rounded-xl text-xs font-bold flex items-center gap-3 animate-in fade-in slide-in-from-top-2 ${profileMessage.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+                  {profileMessage.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                  {profileMessage.text}
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">Vínculo Institucional</p>
-                  <p className="text-base font-bold text-zinc-800">{teacher.regime}</p>
+              )}
+
+              <div className="space-y-8">
+                <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-widest flex items-center gap-2">
+                  <Activity size={14} /> Informações do Perfil
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Editable Fields for Own Profile */}
+                  {isOwnProfile ? (
+                    <>
+                      <div className="space-y-1.5 px-1">
+                        <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest pl-1">Nome Completo</label>
+                        <input 
+                          value={profileData.name}
+                          onChange={e => setProfileData({...profileData, name: e.target.value})}
+                          className="w-full bg-zinc-50/50 border border-zinc-100 rounded-xl h-11 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-primary/30 transition-all"
+                        />
+                      </div>
+                      <div className="space-y-1.5 px-1">
+                        <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest pl-1">E-mail Institucional</label>
+                        <input 
+                          value={profileData.email}
+                          onChange={e => setProfileData({...profileData, email: e.target.value})}
+                          className="w-full bg-zinc-50/50 border border-zinc-100 rounded-xl h-11 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-primary/30 transition-all"
+                        />
+                      </div>
+                      <div className="space-y-1.5 px-1">
+                        <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest pl-1">Data de Nascimento</label>
+                        <input 
+                          type="date"
+                          value={profileData.birthDate}
+                          onChange={e => setProfileData({...profileData, birthDate: e.target.value})}
+                          className="w-full bg-zinc-50/50 border border-zinc-100 rounded-xl h-11 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-primary/30 transition-all"
+                        />
+                      </div>
+                      <div className="space-y-1.5 px-1">
+                        <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest pl-1">Telefone</label>
+                        <input 
+                          value={profileData.phone}
+                          onChange={e => setProfileData({...profileData, phone: e.target.value})}
+                          placeholder="(00) 00000-0000"
+                          className="w-full bg-zinc-50/50 border border-zinc-100 rounded-xl h-11 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-primary/30 transition-all"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-1.5 px-1 text-zinc-400">
+                        <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest pl-1">Área de Atuação</label>
+                        <select 
+                          value={profileData.areaAtuacao}
+                          onChange={e => setProfileData({...profileData, areaAtuacao: e.target.value})}
+                          className="w-full bg-zinc-50/50 border border-zinc-100 rounded-xl h-11 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-primary/30 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="" disabled>Selecione uma área...</option>
+                          {AREAS_DE_ATUACAO.map(area => (
+                            <option key={area} value={area}>{area}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">Área de Atuação</p>
+                        <p className="text-base font-bold text-zinc-800">{teacher.areaAtuacao || 'Não definida'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">Vínculo Institucional</p>
+                        <p className="text-base font-bold text-zinc-800">{teacher.regime}</p>
+                      </div>
+                    </>
+                  )}
                 </div>
+
+                {/* Read-only Institutional Data */}
+                <div className="pt-8 border-t border-zinc-50">
+                  <h4 className="text-[10px] font-black text-zinc-300 uppercase tracking-widest mb-6">Dados Institucionais (Somente Leitura)</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold text-zinc-300 uppercase">SIAPE</p>
+                      <p className="text-sm font-bold text-zinc-500">{teacher.registration}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold text-zinc-300 uppercase">CPF</p>
+                      <p className="text-sm font-bold text-zinc-500">{teacher.cpf || '***.***.***-**'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold text-zinc-300 uppercase">Ano de Ingresso</p>
+                      <p className="text-sm font-bold text-zinc-500">{teacher.ingressoYear || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold text-zinc-300 uppercase">Login</p>
+                      <p className="text-sm font-bold text-zinc-500 text-lowercase">{teacher.login || teacher.email.split('@')[0]}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {isOwnProfile && hasProfileChanges && (
+                  <div className="pt-6 flex justify-end">
+                    <button 
+                      onClick={handleUpdateProfile}
+                      disabled={isSubmitting}
+                      className="bg-emerald-500 text-white px-8 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isSubmitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle2 size={16} />}
+                      Salvar Alterações
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-6">
@@ -1242,7 +1411,16 @@ const TeachersView = ({
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Área de Atuação</label>
-              <input value={formData.areaAtuacao} onChange={e => setFormData({...formData, areaAtuacao: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
+              <select 
+                value={formData.areaAtuacao} 
+                onChange={e => setFormData({...formData, areaAtuacao: e.target.value})} 
+                className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30 bg-white"
+              >
+                <option value="" disabled>Selecione uma área...</option>
+                {AREAS_DE_ATUACAO.map(area => (
+                  <option key={area} value={area}>{area}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Ano de Ingresso</label>
