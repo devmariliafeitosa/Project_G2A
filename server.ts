@@ -27,9 +27,7 @@ const users = [
     cargaHoraria: 0,
     disciplinasMinistradas: [],
     birthDate: "",
-    phone: "",
     areaAtuacao: "",
-    cpf: "",
     ingressoYear: "",
     regime: "40h/DE (Dedicação Exclusiva)",
     leaveType: "Ativo",
@@ -176,18 +174,21 @@ app.put("/api/profile", authenticate, (req: any, res) => {
     return res.status(404).json({ error: "Usuário não encontrado" });
   }
 
-  const { name, email, birthDate, phone, areaAtuacao } = req.body;
+  const { name, email, birthDate, areaAtuacao } = req.body;
 
   // Validate required fields
-  if (!name || !email || !areaAtuacao) {
-    return res.status(400).json({ error: "Campos Nome, E-mail e Área de Atuação são obrigatórios" });
+  if (!name || !email || !areaAtuacao || !birthDate) {
+    return res.status(400).json({ error: "Campos Nome, E-mail, Data de Nascimento e Área de Atuação são obrigatórios" });
+  }
+
+  if (!email.endsWith('@ifce.edu.br')) {
+    return res.status(400).json({ error: "O e-mail deve ser institucional (@ifce.edu.br)" });
   }
 
   // Update only allowed fields
   user.name = name;
   user.email = email;
   user.birthDate = birthDate;
-  user.phone = phone;
   user.areaAtuacao = areaAtuacao;
 
   const { password, ...safeUser } = user;
@@ -243,8 +244,16 @@ app.get("/api/users", adminOnly, (req, res) => {
 });
 
 app.post("/api/users", adminOnly, (req, res) => {
-  const { name, email, role, registration, campus, password, birthDate, phone, areaAtuacao, cpf, login, ingressoYear } = req.body;
+  const { name, email, role, registration, campus, password, birthDate, areaAtuacao, login, ingressoYear, regime, status } = req.body;
   
+  if (!name || !email || !role || !registration || !birthDate || !areaAtuacao || !ingressoYear || !regime) {
+     return res.status(400).json({ error: "Todos os campos orbigatórios devem ser preenchidos" });
+  }
+
+  if (!email.endsWith('@ifce.edu.br')) {
+    return res.status(400).json({ error: "O e-mail deve ser institucional (@ifce.edu.br)" });
+  }
+
   if (users.find(u => u.email === email)) {
     return res.status(400).json({ error: "E-mail já cadastrado" });
   }
@@ -260,15 +269,13 @@ app.post("/api/users", adminOnly, (req, res) => {
     registration,
     campus,
     birthDate,
-    phone,
     areaAtuacao,
-    cpf,
     login,
     ingressoYear,
-    status: "Ativo",
+    regime: regime || "40h/DE (Dedicação Exclusiva)",
+    status: status || "Ativo",
     cargaHoraria: 0,
     disciplinasMinistradas: [],
-    regime: req.body.regime || "40h/DE (Dedicação Exclusiva)",
     leaveType: req.body.leaveType || "Ativo",
     hasReducedWorkload: req.body.hasReducedWorkload || false,
     password: bcrypt.hashSync(password || "ifce123", 10)

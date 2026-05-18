@@ -615,18 +615,21 @@ const CoursesView = ({
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [addingSubjectTo, setAddingSubjectTo] = useState<string | null>(null);
   const [addingTeacherTo, setAddingTeacherTo] = useState<string | null>(null);
-  const [selectedTeacherIdForCourse, setSelectedTeacherIdForCourse] = useState<string>('');
+  const [selectedTeacherIdsForCourse, setSelectedTeacherIdsForCourse] = useState<string[]>([]);
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [courseValidationError, setCourseValidationError] = useState<string | null>(null);
+  const [subjectValidationError, setSubjectValidationError] = useState<string | null>(null);
+  const [editSubjectValidationError, setEditSubjectValidationError] = useState<string | null>(null);
   
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [confirmingDeleteSubjectId, setConfirmingDeleteSubjectId] = useState<string | null>(null);
 
   const [newCourse, setNewCourse] = useState({ 
     name: '', 
-    level: Level.Superior, 
-    type: CourseType.Graduacao, 
-    durationType: 'Semestral' as 'Semestral' | 'Anual',
+    level: '' as Level, 
+    type: '' as CourseType, 
+    durationType: '' as 'Semestral' | 'Anual',
     coordinatorId: '' 
   });
   
@@ -673,26 +676,51 @@ const CoursesView = ({
 
       {isAddingCourse && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 border border-zinc-200 rounded-xl space-y-6 shadow-sm">
+          {courseValidationError && (
+            <div className="bg-rose-50 border border-rose-100 p-3 rounded-lg flex items-center gap-3 text-rose-600 animate-in fade-in slide-in-from-top-2">
+              <AlertCircle size={16} />
+              <span className="text-xs font-bold uppercase tracking-wider">{courseValidationError}</span>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Nome</label>
-              <input value={newCourse.name} onChange={e => setNewCourse({...newCourse, name: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
+              <input 
+                value={newCourse.name} 
+                onChange={e => { setNewCourse({...newCourse, name: e.target.value}); setCourseValidationError(null); }} 
+                className={`w-full border ${courseValidationError && !newCourse.name ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none focus:border-primary/30`} 
+              />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Tipo</label>
-              <select value={newCourse.type} onChange={e => setNewCourse({...newCourse, type: e.target.value as CourseType})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none">
+              <select 
+                value={newCourse.type} 
+                onChange={e => { setNewCourse({...newCourse, type: e.target.value as CourseType}); setCourseValidationError(null); }} 
+                className={`w-full border ${courseValidationError && !newCourse.type ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none`}
+              >
+                <option value="">Escolher...</option>
                 {Object.values(CourseType).map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Nível</label>
-              <select value={newCourse.level} onChange={e => setNewCourse({...newCourse, level: e.target.value as Level})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none">
+              <select 
+                value={newCourse.level} 
+                onChange={e => { setNewCourse({...newCourse, level: e.target.value as Level}); setCourseValidationError(null); }} 
+                className={`w-full border ${courseValidationError && !newCourse.level ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none`}
+              >
+                <option value="">Escolher...</option>
                 {Object.values(Level).map(l => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Duração</label>
-              <select value={newCourse.durationType} onChange={e => setNewCourse({...newCourse, durationType: e.target.value as 'Semestral' | 'Anual'})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none">
+              <select 
+                value={newCourse.durationType} 
+                onChange={e => { setNewCourse({...newCourse, durationType: e.target.value as 'Semestral' | 'Anual'}); setCourseValidationError(null); }} 
+                className={`w-full border ${courseValidationError && !newCourse.durationType ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none`}
+              >
+                <option value="">Escolher...</option>
                 <option value="Semestral">Semestral</option>
                 <option value="Anual">Anual</option>
               </select>
@@ -701,8 +729,8 @@ const CoursesView = ({
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Coordenador</label>
               <select 
                 value={newCourse.coordinatorId} 
-                onChange={e => setNewCourse({...newCourse, coordinatorId: e.target.value})} 
-                className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none"
+                onChange={e => { setNewCourse({...newCourse, coordinatorId: e.target.value}); setCourseValidationError(null); }} 
+                className={`w-full border ${courseValidationError && !newCourse.coordinatorId ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none`}
               >
                 <option value="">Escolher...</option>
                 {getAvailableCoordinators().map(t => (
@@ -713,12 +741,21 @@ const CoursesView = ({
           </div>
           <div className="flex gap-3">
             <button 
-              onClick={() => { onAddCourse(newCourse.name, newCourse.level, newCourse.type, newCourse.durationType, newCourse.coordinatorId || undefined); setIsAddingCourse(false); }}
+              onClick={() => { 
+                if (!newCourse.name || !newCourse.type || !newCourse.level || !newCourse.durationType || !newCourse.coordinatorId) {
+                  setCourseValidationError('Todos os campos são obrigatórios!');
+                  return;
+                }
+                onAddCourse(newCourse.name, newCourse.level, newCourse.type, newCourse.durationType, newCourse.coordinatorId || undefined); 
+                setIsAddingCourse(false); 
+                setCourseValidationError(null);
+                setNewCourse({ name: '', level: '' as Level, type: '' as CourseType, durationType: '' as 'Semestral' | 'Anual', coordinatorId: '' });
+              }}
               className="bg-primary text-white px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider"
             >
               Confirmar
             </button>
-            <button onClick={() => setIsAddingCourse(false)} className="text-zinc-500 text-xs font-bold uppercase tracking-wider px-2 hover:text-zinc-900 transition-colors">Cancelar</button>
+            <button onClick={() => { setIsAddingCourse(false); setCourseValidationError(null); }} className="text-zinc-500 text-xs font-bold uppercase tracking-wider px-2 hover:text-zinc-900 transition-colors">Cancelar</button>
           </div>
         </motion.div>
       )}
@@ -784,37 +821,52 @@ const CoursesView = ({
                         </div>
 
                         {addingTeacherTo === course.id && (
-                          <div className="p-4 bg-white border border-zinc-200 rounded-xl flex items-end gap-3 shadow-sm animate-in zoom-in-95 duration-200">
-                            <div className="flex-1 space-y-1">
-                              <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Selecionar Professor</label>
-                              <select 
-                                value={selectedTeacherIdForCourse}
-                                onChange={e => setSelectedTeacherIdForCourse(e.target.value)}
-                                className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none bg-white"
-                              >
-                                <option value="">Escolher...</option>
+                          <div className="p-4 bg-white border border-zinc-200 rounded-xl space-y-4 shadow-sm animate-in zoom-in-95 duration-200">
+                            <div className="space-y-2">
+                              <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Selecionar Professores (Múltiplos)</label>
+                              <div className="max-h-40 overflow-y-auto border border-zinc-100 rounded-lg p-2 space-y-1 bg-zinc-50/50">
                                 {teachers
                                   .filter(t => !(course.teacherIds || []).includes(t.id))
-                                  .map(t => <option key={t.id} value={t.id}>{t.name} ({t.siape || 'N/A'})</option>)
+                                  .map(t => (
+                                    <label key={t.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-lg transition-colors cursor-pointer group">
+                                      <input 
+                                        type="checkbox"
+                                        checked={selectedTeacherIdsForCourse.includes(t.id)}
+                                        onChange={e => {
+                                          if (e.target.checked) setSelectedTeacherIdsForCourse([...selectedTeacherIdsForCourse, t.id]);
+                                          else setSelectedTeacherIdsForCourse(selectedTeacherIdsForCourse.filter(id => id !== t.id));
+                                        }}
+                                        className="w-4 h-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+                                      />
+                                      <div className="flex-1">
+                                        <p className="text-[11px] font-bold text-zinc-800 leading-tight group-hover:text-emerald-700 transition-colors">{t.name}</p>
+                                        <p className="text-[9px] text-zinc-400 font-sans">SIAPE: {t.siape || 'N/A'}</p>
+                                      </div>
+                                    </label>
+                                  ))
                                 }
-                              </select>
+                                {teachers.filter(t => !(course.teacherIds || []).includes(t.id)).length === 0 && (
+                                  <p className="text-[10px] text-zinc-400 italic p-2 text-center">Todos os professores já estão vinculados.</p>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 justify-end">
                               <button 
                                 onClick={() => {
-                                  if (!selectedTeacherIdForCourse) return;
-                                  const updatedTeacherIds = [...(course.teacherIds || []), selectedTeacherIdForCourse];
+                                  if (selectedTeacherIdsForCourse.length === 0) return;
+                                  const updatedTeacherIds = [...(course.teacherIds || []), ...selectedTeacherIdsForCourse];
                                   onUpdateCourse({ ...course, teacherIds: updatedTeacherIds });
                                   setAddingTeacherTo(null);
-                                  setSelectedTeacherIdForCourse('');
+                                  setSelectedTeacherIdsForCourse([]);
                                 }}
-                                className="bg-emerald-600 text-white h-8 px-4 rounded text-[10px] font-bold uppercase tracking-widest"
+                                disabled={selectedTeacherIdsForCourse.length === 0}
+                                className="bg-emerald-600 text-white h-8 px-4 rounded text-[10px] font-bold uppercase tracking-widest disabled:opacity-50 transition-all hover:bg-emerald-700 shadow-sm"
                               >
-                                Vincular
+                                Vincular {selectedTeacherIdsForCourse.length > 0 && `(${selectedTeacherIdsForCourse.length})`}
                               </button>
                               <button 
-                                onClick={() => { setAddingTeacherTo(null); setSelectedTeacherIdForCourse(''); }} 
-                                className="bg-zinc-100 text-zinc-500 h-8 px-4 rounded text-[10px] font-bold uppercase tracking-widest"
+                                onClick={() => { setAddingTeacherTo(null); setSelectedTeacherIdsForCourse([]); }} 
+                                className="bg-zinc-100 text-zinc-500 h-8 px-4 rounded text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-200 transition-colors"
                               >
                                 Cancelar
                               </button>
@@ -861,56 +913,95 @@ const CoursesView = ({
 
                       {addingSubjectTo === course.id && (
                         <div className="p-4 bg-white border border-zinc-200 rounded-xl grid grid-cols-1 md:grid-cols-5 gap-3 items-end shadow-sm animate-in zoom-in-95 duration-200">
-                          <div className="space-y-1">
+                          <div className="md:col-span-1 space-y-1">
                             <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Nome</label>
-                            <input value={newSubject.name} onChange={e => setNewSubject({...newSubject, name: e.target.value})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none focus:border-primary/30" />
+                            <input 
+                              value={newSubject.name} 
+                              onChange={e => { setNewSubject({...newSubject, name: e.target.value}); setSubjectValidationError(null); }} 
+                              className={`w-full border ${subjectValidationError && !newSubject.name ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-8 px-2 rounded text-xs outline-none focus:border-primary/30`} 
+                            />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Carga (h)</label>
-                            <input type="number" value={newSubject.workload} onChange={e => setNewSubject({...newSubject, workload: parseInt(e.target.value)})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none" />
+                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Carga</label>
+                            <select 
+                              value={newSubject.workload} 
+                              onChange={e => { setNewSubject({...newSubject, workload: parseInt(e.target.value)}); setSubjectValidationError(null); }} 
+                              className={`w-full border ${subjectValidationError && !newSubject.workload ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-8 px-2 rounded text-xs outline-none bg-white font-medium`}
+                            >
+                              <option value={40}>40h</option>
+                              <option value={60}>60h</option>
+                              <option value={80}>80h</option>
+                              <option value={120}>120h</option>
+                            </select>
                           </div>
                           <div className="space-y-1">
                             <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Período</label>
-                            <input type="number" value={newSubject.period} onChange={e => setNewSubject({...newSubject, period: parseInt(e.target.value)})} className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none" />
+                            <input 
+                              type="number" 
+                              value={newSubject.period} 
+                              onChange={e => { setNewSubject({...newSubject, period: parseInt(e.target.value)}); setSubjectValidationError(null); }} 
+                              className={`w-full border ${subjectValidationError && (!newSubject.period || newSubject.period < 1) ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-8 px-2 rounded text-xs outline-none`} 
+                            />
                           </div>
                           <div className="space-y-1">
                             <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Tipo</label>
                             <select 
                               value={newSubject.type} 
-                              onChange={e => setNewSubject({...newSubject, type: e.target.value as 'Obrigatória' | 'Opcional'})} 
+                              onChange={e => { setNewSubject({...newSubject, type: e.target.value as 'Obrigatória' | 'Opcional'}); setSubjectValidationError(null); }} 
                               className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none bg-white font-bold"
                             >
                               <option value="Obrigatória">Obrigatória</option>
                               <option value="Opcional">Opcional</option>
                             </select>
                           </div>
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={() => { 
-                                if (!newSubject.name || !newSubject.workload || !newSubject.period) {
-                                  alert("Preencha todos os campos da disciplina.");
-                                  return;
-                                }
-                                onAddSubject(newSubject.name, newSubject.workload, course.id, newSubject.period, newSubject.type); 
-                                setAddingSubjectTo(null); 
-                                setNewSubject({ name: '', workload: 80, period: 1, type: 'Obrigatória' });
-                              }} 
-                              className="flex-1 bg-primary text-white h-8 rounded text-[10px] font-bold uppercase tracking-widest"
-                            >
-                              Salvar
-                            </button>
-                            <button onClick={() => setAddingSubjectTo(null)} className="flex-1 bg-zinc-100 text-zinc-500 h-8 rounded text-[10px] font-bold uppercase tracking-widest">Sair</button>
+                          <div className="flex flex-col gap-1">
+                            {subjectValidationError && (
+                              <p className="text-[8px] text-rose-500 font-bold uppercase mb-1">{subjectValidationError}</p>
+                            )}
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => { 
+                                  if (!newSubject.name || !newSubject.workload || !newSubject.period || newSubject.period < 1) {
+                                    setSubjectValidationError("Campos obrigatórios!");
+                                    return;
+                                  }
+                                  onAddSubject(newSubject.name, newSubject.workload, course.id, newSubject.period, newSubject.type); 
+                                  setAddingSubjectTo(null); 
+                                  setSubjectValidationError(null);
+                                  setNewSubject({ name: '', workload: 80, period: 1, type: 'Obrigatória' });
+                                }} 
+                                className="flex-1 bg-primary text-white h-8 rounded text-[10px] font-bold uppercase tracking-widest"
+                              >
+                                Salvar
+                              </button>
+                              <button onClick={() => { setAddingSubjectTo(null); setSubjectValidationError(null); }} className="flex-1 bg-zinc-100 text-zinc-500 h-8 rounded text-[10px] font-bold uppercase tracking-widest">Sair</button>
+                            </div>
                           </div>
                         </div>
                       )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {subjects.filter(s => s.courseId === course.id).sort((a,b) => a.period - b.period).map(sub => (
-                          <div key={sub.id} className="bg-white p-3 border border-zinc-200 rounded-lg flex items-center justify-between group/sub hover:border-primary/20 transition-all">
+                          <div 
+                            key={sub.id} 
+                            className={`p-3 border border-zinc-100 bg-white rounded-lg flex items-center justify-between group/sub transition-all duration-300 ${
+                              sub.type === 'Obrigatória' 
+                                ? 'hover:border-emerald-200 hover:shadow-[0_4px_12px_-4px_rgba(16,185,129,0.12)]' 
+                                : 'hover:bg-orange-50/20 hover:border-orange-200 hover:shadow-[0_4px_12px_-4px_rgba(249,115,22,0.08)]'
+                            }`}
+                          >
                             <div>
-                              <p className="text-xs font-bold text-zinc-800">{sub.name}</p>
-                              <p className="text-[9px] text-zinc-400 mt-0.5 font-sans uppercase font-medium">
-                                {sub.period}º Período • {sub.workload}h • <span className={sub.type === 'Obrigatória' ? 'text-zinc-500' : 'text-primary'}>{sub.type}</span>
+                              <p className="text-xs font-bold text-zinc-800 group-hover/sub:text-zinc-900 transition-colors">{sub.name}</p>
+                              <p className="text-[9px] text-zinc-400 mt-1 font-sans uppercase font-medium flex items-center gap-2">
+                                <span className="bg-zinc-50 border border-zinc-100/50 px-1.5 py-0.5 rounded text-zinc-500">{sub.period}º Período</span>
+                                <span className="bg-zinc-50 border border-zinc-100/50 px-1.5 py-0.5 rounded text-zinc-500">{sub.workload}h</span>
+                                <span className={`transition-colors duration-300 ${
+                                  sub.type === 'Obrigatória' 
+                                    ? 'text-zinc-300 group-hover/sub:text-emerald-600/80 font-bold' 
+                                    : 'text-zinc-300 group-hover/sub:text-orange-600/80 font-bold'
+                                }`}>
+                                  {sub.type}
+                                </span>
                               </p>
                             </div>
                             <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-all">
@@ -960,32 +1051,44 @@ const CoursesView = ({
               className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 space-y-6"
             >
               <h3 className="text-xl font-bold text-zinc-900">Editar Disciplina</h3>
+              
+              {editSubjectValidationError && (
+                <div className="bg-rose-50 border border-rose-100 p-3 rounded-xl flex items-center gap-3 text-rose-600 animate-in fade-in slide-in-from-top-2">
+                  <AlertCircle size={16} />
+                  <span className="text-xs font-bold uppercase tracking-wider">{editSubjectValidationError}</span>
+                </div>
+              )}
+
               <div className="space-y-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Nome</label>
                   <input 
                     value={editingSubject.name}
-                    onChange={e => setEditingSubject({...editingSubject, name: e.target.value})}
-                    className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm outline-none focus:border-primary/30"
+                    onChange={e => { setEditingSubject({...editingSubject, name: e.target.value}); setEditSubjectValidationError(null); }}
+                    className={`w-full h-11 border ${editSubjectValidationError && !editingSubject.name ? 'border-rose-300 bg-rose-50' : 'bg-zinc-50 border-zinc-200'} rounded-xl px-4 text-sm outline-none focus:border-primary/30`}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Carga (h)</label>
-                    <input 
-                      type="number"
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Carga</label>
+                    <select 
                       value={editingSubject.workload}
-                      onChange={e => setEditingSubject({...editingSubject, workload: parseInt(e.target.value)})}
-                      className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm outline-none"
-                    />
+                      onChange={e => { setEditingSubject({...editingSubject, workload: parseInt(e.target.value)}); setEditSubjectValidationError(null); }}
+                      className={`w-full h-11 border ${editSubjectValidationError && !editingSubject.workload ? 'border-rose-300 bg-rose-50' : 'bg-zinc-50 border-zinc-200'} rounded-xl px-4 text-sm outline-none bg-white font-bold`}
+                    >
+                      <option value={40}>40h</option>
+                      <option value={60}>60h</option>
+                      <option value={80}>80h</option>
+                      <option value={120}>120h</option>
+                    </select>
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Período</label>
                     <input 
                       type="number"
                       value={editingSubject.period}
-                      onChange={e => setEditingSubject({...editingSubject, period: parseInt(e.target.value)})}
-                      className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm outline-none"
+                      onChange={e => { setEditingSubject({...editingSubject, period: parseInt(e.target.value)}); setEditSubjectValidationError(null); }}
+                      className={`w-full h-11 border ${editSubjectValidationError && (!editingSubject.period || editingSubject.period < 1) ? 'border-rose-300 bg-rose-50' : 'bg-zinc-50 border-zinc-200'} rounded-xl px-4 text-sm outline-none`}
                     />
                   </div>
                 </div>
@@ -993,7 +1096,7 @@ const CoursesView = ({
                   <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Tipo</label>
                   <select 
                     value={editingSubject.type} 
-                    onChange={e => setEditingSubject({...editingSubject, type: e.target.value as 'Obrigatória' | 'Opcional'})}
+                    onChange={e => { setEditingSubject({...editingSubject, type: e.target.value as 'Obrigatória' | 'Opcional'}); setEditSubjectValidationError(null); }}
                     className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm outline-none bg-white font-bold"
                   >
                     <option value="Obrigatória">Obrigatória</option>
@@ -1004,19 +1107,20 @@ const CoursesView = ({
               <div className="flex gap-3">
                 <button 
                   onClick={() => {
-                    if (!editingSubject.name || !editingSubject.workload || !editingSubject.period) {
-                      alert("Preencha todos os campos.");
+                    if (!editingSubject.name || !editingSubject.workload || !editingSubject.period || editingSubject.period < 1) {
+                      setEditSubjectValidationError("Todos os campos são obrigatórios!");
                       return;
                     }
                     onUpdateSubject(editingSubject);
                     setEditingSubject(null);
+                    setEditSubjectValidationError(null);
                   }}
                   className="flex-1 h-12 bg-primary text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-opacity-90 transition-all shadow-lg"
                 >
                   Salvar Alterações
                 </button>
                 <button 
-                  onClick={() => setEditingSubject(null)}
+                  onClick={() => { setEditingSubject(null); setEditSubjectValidationError(null); }}
                   className="flex-1 h-12 bg-zinc-100 text-zinc-500 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all"
                 >
                   Cancelar
@@ -1099,16 +1203,15 @@ const TeacherProfileView = ({
     name: teacher.name,
     email: teacher.email,
     birthDate: teacher.birthDate || '',
-    phone: teacher.phone || '',
     areaAtuacao: teacher.areaAtuacao || ''
   });
+
   const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   const hasProfileChanges = useMemo(() => {
     return profileData.name !== teacher.name ||
            profileData.email !== teacher.email ||
            profileData.birthDate !== (teacher.birthDate || '') ||
-           profileData.phone !== (teacher.phone || '') ||
            profileData.areaAtuacao !== (teacher.areaAtuacao || '');
   }, [profileData, teacher]);
 
@@ -1178,8 +1281,13 @@ const TeacherProfileView = ({
 
   const handleUpdateProfile = async () => {
     setProfileMessage(null);
-    if (!profileData.name || !profileData.email || !profileData.areaAtuacao) {
-      setProfileMessage({ type: 'error', text: "Nome, E-mail e Área de Atuação são obrigatórios" });
+    if (!profileData.name || !profileData.email || !profileData.areaAtuacao || !profileData.birthDate) {
+      setProfileMessage({ type: 'error', text: "Nome, E-mail, Data de Nascimento e Área de Atuação são obrigatórios" });
+      return;
+    }
+
+    if (!profileData.email.endsWith('@ifce.edu.br')) {
+      setProfileMessage({ type: 'error', text: "O e-mail deve ser institucional (@ifce.edu.br)" });
       return;
     }
     
@@ -1307,15 +1415,6 @@ const TeacherProfileView = ({
                         />
                       </div>
                       <div className="space-y-1.5 px-1">
-                        <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest pl-1">Telefone</label>
-                        <input 
-                          value={profileData.phone}
-                          onChange={e => setProfileData({...profileData, phone: e.target.value})}
-                          placeholder="(00) 00000-0000"
-                          className="w-full bg-zinc-50/50 border border-zinc-100 rounded-xl h-11 px-4 text-sm font-bold text-zinc-800 outline-none focus:border-primary/30 transition-all"
-                        />
-                      </div>
-                      <div className="md:col-span-2 space-y-1.5 px-1 text-zinc-400">
                         <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest pl-1">Área de Atuação</label>
                         <select 
                           value={profileData.areaAtuacao}
@@ -1346,14 +1445,10 @@ const TeacherProfileView = ({
                 {/* Read-only Institutional Data */}
                 <div className="pt-8 border-t border-zinc-50">
                   <h4 className="text-[10px] font-black text-zinc-300 uppercase tracking-widest mb-6">Dados Institucionais (Somente Leitura)</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                     <div className="space-y-1">
                       <p className="text-[9px] font-bold text-zinc-300 uppercase">SIAPE</p>
                       <p className="text-sm font-bold text-zinc-500">{teacher.registration}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-bold text-zinc-300 uppercase">CPF</p>
-                      <p className="text-sm font-bold text-zinc-500">{teacher.cpf || '***.***.***-**'}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[9px] font-bold text-zinc-300 uppercase">Ano de Ingresso</p>
@@ -1824,14 +1919,14 @@ const TeachersView = ({
     ingressoYear: '', 
     birthDate: '', 
     areaAtuacao: '',
-    phone: '',
-    cpf: '',
     regime: WorkRegime.DE,
     leaveType: LeaveType.Nenhum,
     hasReducedWorkload: false,
     role: 'Professor' as UserRole,
     status: 'Ativo' as 'Ativo' | 'Inativo'
   });
+
+  const [formErrors, setFormErrors] = useState<string[]>([]);
 
   useEffect(() => {
     if (notification) {
@@ -1851,7 +1946,33 @@ const TeachersView = ({
   }, [teachers, searchTerm, roleFilter, statusFilter]);
 
   const handleSubmit = () => {
-    if (!formData.name || !formData.email || !formData.registration) return;
+    const requiredFields = [
+      { key: 'name', label: 'Nome Completo' },
+      { key: 'email', label: 'E-mail Institucional' },
+      { key: 'registration', label: 'SIAPE' },
+      { key: 'birthDate', label: 'Data de Nascimento' },
+      { key: 'ingressoYear', label: 'Ano de Ingresso' },
+      { key: 'areaAtuacao', label: 'Área de Atuação' },
+      { key: 'role', label: 'Função/Cargo' },
+      { key: 'regime', label: 'Regime de Trabalho' },
+      { key: 'status', label: 'Status' }
+    ];
+
+    const errors = requiredFields
+      .filter(f => !formData[f.key as keyof typeof formData])
+      .map(f => f.label);
+
+    if (formData.email && !formData.email.endsWith('@ifce.edu.br')) {
+      errors.push('E-mail deve ser institucional (@ifce.edu.br)');
+    }
+
+    if (errors.length > 0) {
+      setFormErrors(errors);
+      setNotification({ message: errors[0], type: 'alert' });
+      return;
+    }
+
+    setFormErrors([]);
     
     if (editingId) {
       onUpdateTeacher({ ...formData, id: editingId });
@@ -1863,7 +1984,7 @@ const TeachersView = ({
 
     setFormData({
       name: '', email: '', registration: '', ingressoYear: '', birthDate: '', 
-      areaAtuacao: '', phone: '', cpf: '', regime: WorkRegime.DE, 
+      areaAtuacao: '', regime: WorkRegime.DE, 
       leaveType: LeaveType.Nenhum, hasReducedWorkload: false, role: 'Professor',
       status: 'Ativo'
     });
@@ -1879,8 +2000,6 @@ const TeachersView = ({
       ingressoYear: teacher.ingressoYear || '',
       birthDate: teacher.birthDate || '',
       areaAtuacao: teacher.areaAtuacao || '',
-      phone: teacher.phone || '',
-      cpf: teacher.cpf || '',
       regime: teacher.regime,
       leaveType: teacher.leaveType,
       hasReducedWorkload: teacher.hasReducedWorkload,
@@ -1889,6 +2008,7 @@ const TeachersView = ({
     });
     setEditingId(teacher.id);
     setIsAdding(true);
+    setFormErrors([]);
   };
 
   const confirmDelete = () => {
@@ -1910,12 +2030,13 @@ const TeachersView = ({
           onClick={() => {
             setFormData({
               name: '', email: '', registration: '', ingressoYear: '', birthDate: '', 
-              areaAtuacao: '', phone: '', cpf: '', regime: WorkRegime.DE, 
+              areaAtuacao: '', regime: WorkRegime.DE, 
               leaveType: LeaveType.Nenhum, hasReducedWorkload: false, role: 'Professor',
               status: 'Ativo'
             });
             setEditingId(null);
             setIsAdding(true);
+            setFormErrors([]);
           }}
           className="bg-primary text-white px-4 py-2 rounded text-sm font-medium hover:bg-opacity-90 transition-all flex items-center gap-2"
         >
@@ -1965,6 +2086,10 @@ const TeachersView = ({
           <option value="Todos">Todos os Status</option>
           <option value="Ativo">Ativos</option>
           <option value="Inativo">Inativos</option>
+          <option value="Afastamento">Afastamento</option>
+          <option value="Substituição">Substituição</option>
+          <option value="Alteração de Vínculo">Alt. de Vínculo</option>
+          <option value="Remanejamento">Remanejado</option>
         </select>
       </div>
 
@@ -1976,26 +2101,29 @@ const TeachersView = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Nome Completo</label>
-              <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
+              <input value={formData.name} onChange={e => { setFormData({...formData, name: e.target.value}); setFormErrors(prev => prev.filter(err => err !== 'Nome Completo')); }} className={`w-full border ${formErrors.includes('Nome Completo') ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none focus:border-primary/30`} />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Data de Nascimento</label>
-              <input type="date" value={formData.birthDate} onChange={e => setFormData({...formData, birthDate: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
+              <input type="date" value={formData.birthDate} onChange={e => { setFormData({...formData, birthDate: e.target.value}); setFormErrors(prev => prev.filter(err => err !== 'Data de Nascimento')); }} className={`w-full border ${formErrors.includes('Data de Nascimento') ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none focus:border-primary/30`} />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">E-mail Institucional</label>
-              <input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Telefone</label>
-              <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" placeholder="(00) 00000-0000" />
+              <input 
+                value={formData.email} 
+                onChange={e => { 
+                  setFormData({...formData, email: e.target.value}); 
+                  setFormErrors(prev => prev.filter(err => !err.includes('E-mail') && !err.includes('@ifce.edu.br'))); 
+                }} 
+                className={`w-full border ${formErrors.some(err => err.includes('E-mail') || err.includes('@ifce.edu.br')) ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none focus:border-primary/30`} 
+              />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Área de Atuação</label>
               <select 
                 value={formData.areaAtuacao} 
-                onChange={e => setFormData({...formData, areaAtuacao: e.target.value})} 
-                className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30 bg-white"
+                onChange={e => { setFormData({...formData, areaAtuacao: e.target.value}); setFormErrors(prev => prev.filter(err => err !== 'Área de Atuação')); }} 
+                className={`w-full border ${formErrors.includes('Área de Atuação') ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none focus:border-primary/30 bg-white`}
               >
                 <option value="" disabled>Selecione uma área...</option>
                 {AREAS_DE_ATUACAO.map(area => (
@@ -2005,19 +2133,15 @@ const TeachersView = ({
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Ano de Ingresso</label>
-              <input type="number" value={formData.ingressoYear} onChange={e => setFormData({...formData, ingressoYear: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" placeholder="Ex: 2020" />
+              <input type="number" value={formData.ingressoYear} onChange={e => { setFormData({...formData, ingressoYear: e.target.value}); setFormErrors(prev => prev.filter(err => err !== 'Ano de Ingresso')); }} className={`w-full border ${formErrors.includes('Ano de Ingresso') ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none focus:border-primary/30`} placeholder="Ex: 2020" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">SIAPE</label>
-              <input value={formData.registration} onChange={e => setFormData({...formData, registration: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" placeholder="Ex: 1234567" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">CPF</label>
-              <input value={formData.cpf} onChange={e => setFormData({...formData, cpf: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" placeholder="000.000.000-00" />
+              <input value={formData.registration} onChange={e => { setFormData({...formData, registration: e.target.value}); setFormErrors(prev => prev.filter(err => err !== 'SIAPE')); }} className={`w-full border ${formErrors.includes('SIAPE') ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none focus:border-primary/30`} placeholder="Ex: 1234567" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Função/Cargo</label>
-              <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as UserRole})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30">
+              <select value={formData.role} onChange={e => { setFormData({...formData, role: e.target.value as UserRole}); setFormErrors(prev => prev.filter(err => err !== 'Função/Cargo')); }} className={`w-full border ${formErrors.includes('Função/Cargo') ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none focus:border-primary/30`}>
                 <option value="Professor">Professor</option>
                 <option value="Coordenador">Coordenador</option>
                 <option value="Diretor">Diretor</option>
@@ -2025,15 +2149,19 @@ const TeachersView = ({
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Regime de Trabalho</label>
-              <select value={formData.regime} onChange={e => setFormData({...formData, regime: e.target.value as WorkRegime})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30">
+              <select value={formData.regime} onChange={e => { setFormData({...formData, regime: e.target.value as WorkRegime}); setFormErrors(prev => prev.filter(err => err !== 'Regime de Trabalho')); }} className={`w-full border ${formErrors.includes('Regime de Trabalho') ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none focus:border-primary/30`}>
                 {Object.values(WorkRegime).map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Status</label>
-              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30">
+              <select value={formData.status} onChange={e => { setFormData({...formData, status: e.target.value as any}); setFormErrors(prev => prev.filter(err => err !== 'Status')); }} className={`w-full border ${formErrors.includes('Status') ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-9 px-3 rounded text-sm outline-none focus:border-primary/30`}>
                 <option value="Ativo">Ativo</option>
                 <option value="Inativo">Inativo</option>
+                <option value="Afastamento">Afastamento</option>
+                <option value="Substituição">Substituição</option>
+                <option value="Alteração de Vínculo">Alteração de Vínculo</option>
+                <option value="Remanejamento">Remanejamento</option>
               </select>
             </div>
           </div>
@@ -2049,6 +2177,7 @@ const TeachersView = ({
           <thead>
             <tr className="bg-zinc-50 text-left border-b border-zinc-100">
               <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Docente</th>
+              <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider text-center">Status</th>
               <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider text-center">Ano Egresso/SIAPE</th>
               <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider text-center">Carga</th>
               <th className="px-6 py-4 text-right text-xs font-bold text-zinc-500 uppercase tracking-wider">Ações</th>
@@ -2062,6 +2191,17 @@ const TeachersView = ({
                     <p className="text-sm font-bold text-zinc-900 leading-none">{teacher.name}</p>
                     <p className="text-[10px] text-zinc-400 mt-1 font-medium">{teacher.email}</p>
                   </div>
+                </td>
+                <td className="px-6 py-4 text-center">
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                    teacher.status === 'Ativo' ? 'bg-emerald-50 text-emerald-600' :
+                    teacher.status === 'Afastamento' ? 'bg-rose-50 text-rose-600' :
+                    teacher.status === 'Substituição' ? 'bg-amber-50 text-amber-600' :
+                    teacher.status === 'Inativo' ? 'bg-zinc-100 text-zinc-400' :
+                    'bg-sky-50 text-sky-600'
+                  }`}>
+                    {teacher.status || 'Ativo'}
+                  </span>
                 </td>
                 <td className="px-6 py-4 text-center">
                   <p className="text-xs text-zinc-600 font-medium">{teacher.ingressoYear || 'N/A'}</p>
@@ -2102,7 +2242,7 @@ const TeachersView = ({
               </tr>
             )) : (
               <tr>
-                <td colSpan={4} className="px-6 py-16 text-center text-zinc-400 text-sm font-medium italic">
+                <td colSpan={5} className="px-6 py-16 text-center text-zinc-400 text-sm font-medium italic">
                   Nenhum docente encontrado nos registros.
                 </td>
               </tr>

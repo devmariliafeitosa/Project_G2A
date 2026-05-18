@@ -34,8 +34,6 @@ export interface User {
   ingressoYear?: string;
   dataIngresso?: string;
   birthDate?: string;
-  phone?: string;
-  cpf?: string;
   login?: string;
   areaAtuacao?: string;
   cargaHoraria: number; // In-classroom hours
@@ -43,7 +41,7 @@ export interface User {
   courseId?: string; // If coordinator, which course
   avatarUrl?: string;
   password?: string;
-  status?: 'Ativo' | 'Inativo' | 'Afastado' | 'Licença';
+  status?: 'Ativo' | 'Inativo' | 'Afastamento' | 'Substituição' | 'Alteração de Vínculo' | 'Remanejamento';
 }
 
 export enum CourseType {
