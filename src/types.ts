@@ -78,6 +78,7 @@ export interface Course {
   type: CourseType;
   durationType: 'Semestral' | 'Anual';
   coordinatorId?: string;
+  teacherIds?: string[];
 }
 
 export interface Subject {

@@ -116,7 +116,8 @@ const INITIAL_COURSES: Course[] = [
     campus: 'Tauá',
     level: Level.Superior,
     type: CourseType.Graduacao,
-    durationType: 'Semestral'
+    durationType: 'Semestral',
+    teacherIds: []
   },
   {
     id: 'c2',
@@ -124,7 +125,8 @@ const INITIAL_COURSES: Course[] = [
     campus: 'Tauá',
     level: Level.Superior,
     type: CourseType.Graduacao,
-    durationType: 'Semestral'
+    durationType: 'Semestral',
+    teacherIds: []
   }
 ];
 
@@ -604,7 +606,7 @@ const CoursesView = ({
   courses: Course[], 
   teachers: User[], 
   subjects: Subject[], 
-  onAddCourse: (name: string, level: Level, type: CourseType, duration: 'Semestral' | 'Anual') => void,
+  onAddCourse: (name: string, level: Level, type: CourseType, duration: 'Semestral' | 'Anual', coordinatorId?: string) => void,
   onAddSubject: (name: string, workload: number, courseId: string, period: number, type: 'Obrigatória' | 'Opcional') => void,
   onUpdateCourse: (course: Course) => void,
   onDeleteSubject: (id: string) => void,
@@ -612,6 +614,8 @@ const CoursesView = ({
 }) => {
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [addingSubjectTo, setAddingSubjectTo] = useState<string | null>(null);
+  const [addingTeacherTo, setAddingTeacherTo] = useState<string | null>(null);
+  const [selectedTeacherIdForCourse, setSelectedTeacherIdForCourse] = useState<string>('');
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -622,7 +626,8 @@ const CoursesView = ({
     name: '', 
     level: Level.Superior, 
     type: CourseType.Graduacao, 
-    durationType: 'Semestral' as 'Semestral' | 'Anual' 
+    durationType: 'Semestral' as 'Semestral' | 'Anual',
+    coordinatorId: '' 
   });
   
   const [newSubject, setNewSubject] = useState({ 
@@ -668,7 +673,7 @@ const CoursesView = ({
 
       {isAddingCourse && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 border border-zinc-200 rounded-xl space-y-6 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Nome</label>
               <input value={newCourse.name} onChange={e => setNewCourse({...newCourse, name: e.target.value})} className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none focus:border-primary/30" />
@@ -692,10 +697,23 @@ const CoursesView = ({
                 <option value="Anual">Anual</option>
               </select>
             </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Coordenador</label>
+              <select 
+                value={newCourse.coordinatorId} 
+                onChange={e => setNewCourse({...newCourse, coordinatorId: e.target.value})} 
+                className="w-full border border-zinc-200 h-9 px-3 rounded text-sm outline-none"
+              >
+                <option value="">Escolher...</option>
+                {getAvailableCoordinators().map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex gap-3">
             <button 
-              onClick={() => { onAddCourse(newCourse.name, newCourse.level, newCourse.type, newCourse.durationType); setIsAddingCourse(false); }}
+              onClick={() => { onAddCourse(newCourse.name, newCourse.level, newCourse.type, newCourse.durationType, newCourse.coordinatorId || undefined); setIsAddingCourse(false); }}
               className="bg-primary text-white px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider"
             >
               Confirmar
@@ -752,7 +770,87 @@ const CoursesView = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                            <Users size={14} /> Professores do Curso
+                          </h5>
+                          <button 
+                            onClick={() => setAddingTeacherTo(course.id)} 
+                            className="text-emerald-600 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 hover:underline underline-offset-4"
+                          >
+                            <UserPlusIcon size={12} /> Add Professor
+                          </button>
+                        </div>
+
+                        {addingTeacherTo === course.id && (
+                          <div className="p-4 bg-white border border-zinc-200 rounded-xl flex items-end gap-3 shadow-sm animate-in zoom-in-95 duration-200">
+                            <div className="flex-1 space-y-1">
+                              <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Selecionar Professor</label>
+                              <select 
+                                value={selectedTeacherIdForCourse}
+                                onChange={e => setSelectedTeacherIdForCourse(e.target.value)}
+                                className="w-full border border-zinc-200 h-8 px-2 rounded text-xs outline-none bg-white"
+                              >
+                                <option value="">Escolher...</option>
+                                {teachers
+                                  .filter(t => !(course.teacherIds || []).includes(t.id))
+                                  .map(t => <option key={t.id} value={t.id}>{t.name} ({t.siape || 'N/A'})</option>)
+                                }
+                              </select>
+                            </div>
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => {
+                                  if (!selectedTeacherIdForCourse) return;
+                                  const updatedTeacherIds = [...(course.teacherIds || []), selectedTeacherIdForCourse];
+                                  onUpdateCourse({ ...course, teacherIds: updatedTeacherIds });
+                                  setAddingTeacherTo(null);
+                                  setSelectedTeacherIdForCourse('');
+                                }}
+                                className="bg-emerald-600 text-white h-8 px-4 rounded text-[10px] font-bold uppercase tracking-widest"
+                              >
+                                Vincular
+                              </button>
+                              <button 
+                                onClick={() => { setAddingTeacherTo(null); setSelectedTeacherIdForCourse(''); }} 
+                                className="bg-zinc-100 text-zinc-500 h-8 px-4 rounded text-[10px] font-bold uppercase tracking-widest"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                          {(course.teacherIds || []).map(tId => {
+                            const teacher = teachers.find(t => t.id === tId);
+                            if (!teacher) return null;
+                            return (
+                              <div key={tId} className="bg-white border border-zinc-200 px-3 py-1.5 rounded-full flex items-center gap-2 group/tag">
+                                <div className="w-5 h-5 rounded-full bg-zinc-100 flex items-center justify-center text-[8px] font-bold text-zinc-500">
+                                  {teacher.name.charAt(0)}
+                                </div>
+                                <span className="text-[11px] font-medium text-zinc-700">{teacher.name}</span>
+                                <button 
+                                  onClick={() => {
+                                    const updatedTeacherIds = (course.teacherIds || []).filter(id => id !== tId);
+                                    onUpdateCourse({ ...course, teacherIds: updatedTeacherIds });
+                                  }}
+                                  className="text-zinc-300 hover:text-alert transition-colors"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            );
+                          })}
+                          {(course.teacherIds || []).length === 0 && (
+                            <p className="text-[10px] text-zinc-400 italic font-sans px-2">Nenhum professor vinculado além da coordenação.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
                         <h5 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
                           <BookPlus size={14} /> Matriz Curricular
                         </h5>
@@ -2989,8 +3087,8 @@ export default function App() {
     checkToken();
   }, []);
 
-  const addCourse = (name: string, level: Level, type: CourseType, durationType: 'Semestral' | 'Anual') => {
-    setCourses([...courses, { id: Date.now().toString(), name, campus: 'Tauá', level, type, durationType }]);
+  const addCourse = (name: string, level: Level, type: CourseType, durationType: 'Semestral' | 'Anual', coordinatorId?: string) => {
+    setCourses([...courses, { id: Date.now().toString(), name, campus: 'Tauá', level, type, durationType, coordinatorId }]);
   };
 
   const addSubject = (name: string, workload: number, courseId: string, period: number, type: 'Obrigatória' | 'Opcional') => {
