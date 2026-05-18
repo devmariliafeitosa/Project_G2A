@@ -1727,6 +1727,8 @@ const NotificationsView = ({
   onNavigate: (path: string) => void
 }) => {
   const [filter, setFilter] = useState<'Todas' | 'Não lidas' | 'Alta prioridade' | 'Alertas' | 'Solicitações' | 'Arquivada'>('Todas');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   const filteredNotifications = useMemo(() => {
     let list = [...notifications];
@@ -1752,6 +1754,25 @@ const NotificationsView = ({
   }, [notifications, filter]);
 
   const unreadCount = notifications.filter(n => n.status === 'Não lida').length;
+
+  const handleDeleteClick = (id: string) => {
+    const skip = localStorage.getItem('skip_delete_notif_confirm') === 'true';
+    if (skip) {
+      onDeleteNotification(id);
+    } else {
+      setConfirmDeleteId(id);
+    }
+  };
+
+  const confirmDelete = () => {
+    if (confirmDeleteId) {
+      onDeleteNotification(confirmDeleteId);
+      if (dontShowAgain) {
+        localStorage.setItem('skip_delete_notif_confirm', 'true');
+      }
+      setConfirmDeleteId(null);
+    }
+  };
 
   const getTypeIcon = (type: NotificationType) => {
     switch (type) {
@@ -1866,7 +1887,7 @@ const NotificationsView = ({
                     </button>
                   )}
                    <button 
-                    onClick={() => onDeleteNotification(notif.id)}
+                    onClick={() => handleDeleteClick(notif.id)}
                     className="h-8 px-4 text-zinc-300 hover:text-rose-500 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
                   >
                     Excluir
@@ -1882,6 +1903,50 @@ const NotificationsView = ({
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {confirmDeleteId && (
+          <div className="fixed inset-0 bg-zinc-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-rose-500" />
+              <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 mb-6">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-zinc-900 mb-2 font-sans">Excluir Notificação?</h3>
+              <p className="text-sm text-zinc-500 mb-6 font-medium leading-relaxed font-sans">
+                Esta ação não pode ser desfeita. A notificação será removida permanentemente do sistema.
+              </p>
+
+              <div className="flex items-center gap-3 mb-6 bg-zinc-50 p-4 rounded-2xl group cursor-pointer" onClick={() => setDontShowAgain(!dontShowAgain)}>
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${dontShowAgain ? 'bg-primary border-primary' : 'border-zinc-300 bg-white group-hover:border-zinc-400'}`}>
+                  {dontShowAgain && <Check size={14} className="text-white" />}
+                </div>
+                <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest font-sans">Não perguntar novamente</span>
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={confirmDelete}
+                  className="flex-1 h-12 bg-rose-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 font-sans"
+                >
+                  Excluir
+                </button>
+                <button 
+                  onClick={() => { setConfirmDeleteId(null); setDontShowAgain(false); }}
+                  className="flex-1 h-12 bg-zinc-100 text-zinc-500 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all font-sans"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -2926,6 +2991,329 @@ const TeacherOccurrencesView = ({
   );
 };
 
+const ProfessorScheduleView = ({ 
+  user, 
+  courses, 
+  subjects, 
+  teachers,
+  schedules 
+}: { 
+  user: User, 
+  courses: Course[], 
+  subjects: Subject[],
+  teachers: User[],
+  schedules: ScheduleEntry[]
+}) => {
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+
+  const professorSchedules = useMemo(() => {
+    let filtered = schedules.filter(s => s.teacherId === user.id);
+    if (selectedCourseId) {
+      filtered = filtered.filter(s => s.courseId === selectedCourseId);
+    }
+    return filtered;
+  }, [schedules, user.id, selectedCourseId]);
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <header>
+        <div className="flex items-center gap-3 text-primary mb-2">
+          <Calendar size={20} />
+          <span className="text-[10px] font-black uppercase tracking-[0.2em]">Área Professor</span>
+        </div>
+        <h1 className="text-2xl font-bold text-zinc-900">Minha Grade Semanal</h1>
+        <p className="text-zinc-500 text-sm">Visualize suas alocações em todos os cursos.</p>
+      </header>
+
+      <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-zinc-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-bold text-zinc-900">Visualização de Horário</h3>
+            <p className="text-xs text-zinc-500 font-sans">Filtre por curso para ver alocações específicas.</p>
+          </div>
+          <div className="flex gap-3">
+            <select 
+              value={selectedCourseId}
+              onChange={e => setSelectedCourseId(e.target.value)}
+              className="bg-zinc-50 border border-zinc-200 rounded-lg px-4 py-2 text-xs font-bold text-zinc-700 outline-none focus:ring-1 focus:ring-primary/20 transition-all"
+            >
+              <option value="">Todos os Cursos</option>
+              {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="p-6 overflow-x-auto">
+          <div className="min-w-[800px]">
+            <div className="grid grid-cols-7 gap-4 mb-4">
+              <div className="w-24"></div>
+              {DAYS.map(day => (
+                <div key={day} className="text-center">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{day}</p>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-4">
+              {TIME_SLOTS.map(slot => (
+                <div key={slot.id} className="grid grid-cols-7 gap-4">
+                  <div className="w-24 flex flex-col justify-center">
+                    <p className="text-[10px] font-bold text-zinc-900 leading-none">{slot.label.split(' às ')[0]}</p>
+                    <p className="text-[9px] text-zinc-400 font-medium mt-1 uppercase">{slot.period}</p>
+                  </div>
+                  {DAYS.map(day => {
+                    const entry = professorSchedules.find(s => 
+                      s.dayOfWeek === day && 
+                      s.timeSlotId === slot.id
+                    );
+                    const subject = entry ? subjects.find(s => s.id === entry.subjectId) : null;
+                    const course = entry ? courses.find(c => c.id === entry.courseId) : null;
+
+                    if (slot.isBreak) {
+                      return (
+                        <div key={day} className="h-10 bg-zinc-50/50 border border-zinc-100 border-dashed rounded-lg flex items-center justify-center">
+                          <span className="text-[8px] font-bold text-zinc-300 uppercase tracking-widest">{slot.period}</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div 
+                        key={day}
+                        className={`min-h-[60px] rounded-xl border p-3 flex flex-col justify-center shadow-sm relative group transition-all ${
+                          subject 
+                            ? (subject.color || PASTEL_COLORS[0])
+                            : 'bg-zinc-50/30 border-zinc-100 hover:border-zinc-200'
+                        }`}
+                      >
+                        {subject ? (
+                          <>
+                            <p className="text-[10px] font-bold leading-tight mb-1">{subject.name}</p>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[8px] font-bold opacity-60 uppercase">{course?.name}</span>
+                              <span className="text-[8px] font-bold opacity-40 uppercase">{entry?.period}º Período</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-center h-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-[8px] font-bold text-zinc-300 uppercase tracking-widest">Livre</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ProfessorPreferencesView = ({ 
+  user, 
+  courses, 
+  subjects, 
+  preferences,
+  onSave
+}: { 
+  user: User, 
+  courses: Course[], 
+  subjects: Subject[],
+  preferences: { teacherId: string, preferredSubjects: string[], preferredDays: string[], preferredShifts: string[] }[],
+  onSave: (prefs: { preferredSubjects: string[], preferredDays: string[], preferredShifts: string[] }) => void
+}) => {
+  const userPrefs = useMemo(() => preferences.find(p => p.teacherId === user.id) || { preferredSubjects: [], preferredDays: [], preferredShifts: [] }, [preferences, user.id]);
+
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [preferredSubjects, setPreferredSubjects] = useState<string[]>(userPrefs.preferredSubjects);
+  const [preferredDays, setPreferredDays] = useState<string[]>(userPrefs.preferredDays);
+  const [preferredShifts, setPreferredShifts] = useState<string[]>(userPrefs.preferredShifts);
+  const [isSent, setIsSent] = useState(false);
+
+  const courseSubjects = useMemo(() => subjects.filter(s => s.courseId === selectedCourseId), [subjects, selectedCourseId]);
+
+  const toggleSubject = (id: string) => {
+    setPreferredSubjects(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const toggleDay = (day: string) => {
+    setPreferredDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+  };
+
+  const toggleShift = (shift: string) => {
+    setPreferredShifts(prev => prev.includes(shift) ? prev.filter(s => s !== shift) : [...prev, shift]);
+  };
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20 relative">
+      <header>
+        <div className="flex items-center gap-3 text-primary mb-2">
+          <UserCheck size={20} />
+          <span className="text-[10px] font-black uppercase tracking-[0.2em]">Área Professor</span>
+        </div>
+        <h1 className="text-2xl font-bold text-zinc-900">Minhas Preferências</h1>
+        <p className="text-zinc-500 text-sm">Defina seus interesses em disciplinas e horários.</p>
+      </header>
+
+      <div className="bg-orange-50/50 border border-orange-100 p-6 rounded-2xl">
+        <div className="flex gap-4">
+          <div className="w-10 h-10 bg-white border border-orange-200 rounded-full flex items-center justify-center text-orange-400 shrink-0 shadow-sm">
+            <Info size={20} />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-xs font-bold text-orange-900 font-sans uppercase tracking-widest">Informações de Alocação</h4>
+            <p className="text-xs text-orange-700/80 leading-relaxed font-sans font-medium">
+              Selecione abaixo as disciplinas que você tem maior afinidade e os turnos que melhor se adequam à sua rotina. 
+              Estas informações serão utilizadas como base para a montagem da grade horária oficial.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-zinc-900">Interesse em Disciplinas</h3>
+              <select 
+                value={selectedCourseId}
+                onChange={e => setSelectedCourseId(e.target.value)}
+                className="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold text-zinc-700 outline-none"
+              >
+                <option value="">Selecionar Curso...</option>
+                {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            
+            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              {selectedCourseId ? (
+                courseSubjects.length > 0 ? (
+                  courseSubjects.map(sub => (
+                    <button
+                      key={sub.id}
+                      onClick={() => toggleSubject(sub.id)}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
+                        preferredSubjects.includes(sub.id)
+                          ? 'border-primary bg-primary/5 shadow-sm'
+                          : 'border-zinc-100 hover:border-zinc-200 bg-white'
+                      }`}
+                    >
+                      <div className="text-left">
+                        <p className={`text-xs font-bold ${preferredSubjects.includes(sub.id) ? 'text-primary' : 'text-zinc-700'}`}>{sub.name}</p>
+                        <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider mt-0.5">{sub.workload}h • {sub.period}º Período</p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${preferredSubjects.includes(sub.id) ? 'bg-primary border-primary' : 'border-zinc-200'}`}>
+                        {preferredSubjects.includes(sub.id) && <Check size={12} className="text-white" />}
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="py-12 text-center">
+                    <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest">Nenhuma disciplina cadastrada</p>
+                  </div>
+                )
+              ) : (
+                <div className="py-12 text-center bg-zinc-50/50 rounded-xl border border-dashed border-zinc-200">
+                  <div className="w-10 h-10 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-3 text-zinc-400">
+                    <BookOpen size={20} />
+                  </div>
+                  <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest">Selecione um curso para ver as disciplinas</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-zinc-900 border-b border-zinc-100 pb-2">Dias da Semana</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {DAYS.map(day => (
+                  <button
+                    key={day}
+                    onClick={() => toggleDay(day)}
+                    className={`h-12 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
+                      preferredDays.includes(day)
+                        ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
+                        : 'bg-zinc-50 text-zinc-500 border-zinc-200 hover:border-zinc-300'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-2">
+              <h3 className="text-sm font-bold text-zinc-900 border-b border-zinc-100 pb-2">Turno de Interesse</h3>
+              <div className="grid grid-cols-3 gap-3">
+                {['Manhã', 'Tarde', 'Noite'].map(shift => (
+                  <button
+                    key={shift}
+                    onClick={() => toggleShift(shift)}
+                    className={`h-12 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
+                      preferredShifts.includes(shift)
+                        ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
+                        : 'bg-zinc-50 text-zinc-500 border-zinc-200 hover:border-zinc-300'
+                    }`}
+                  >
+                    {shift}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <button 
+                onClick={() => {
+                  onSave({ preferredSubjects, preferredDays, preferredShifts });
+                  setIsSent(true);
+                }}
+                className="w-full h-12 bg-primary text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-opacity-90 transition-all shadow-xl shadow-primary/10 flex items-center justify-center gap-2"
+              >
+                <Check size={18} />
+                <span>Salvar e Enviar Preferências</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {isSent && (
+          <div className="fixed inset-0 bg-zinc-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              className="bg-white w-full max-w-sm rounded-[40px] p-10 shadow-2xl relative overflow-hidden text-center"
+            >
+              <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500" />
+              <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center text-emerald-500 mx-auto mb-8 shadow-inner">
+                <Check size={40} strokeWidth={3} />
+              </div>
+              <h3 className="text-2xl font-black text-zinc-900 mb-3 font-sans tracking-tight uppercase tracking-[0.1em]">Preferências Enviadas!</h3>
+              <p className="text-sm text-zinc-500 mb-8 font-medium leading-relaxed font-sans">
+                Suas disciplinas e horários de interesse foram encaminhados com sucesso ao coordenador. Estas informações serão revisadas para a montagem da grade.
+              </p>
+              
+              <button 
+                onClick={() => setIsSent(false)}
+                className="w-full h-14 bg-zinc-900 text-white rounded-2xl font-bold text-xs uppercase tracking-[0.2em] hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-200 font-sans"
+              >
+                Entendido
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const SettingsView = () => (
   <div className="space-y-8 animate-in fade-in duration-500">
     <header>
@@ -2971,7 +3359,8 @@ const SettingsView = () => (
 
 export default function App() {
   const [session, setSession] = useState<{ user: User | null, isLoggedIn: boolean }>({ user: null, isLoggedIn: false });
-  const [currentView, setCurrentView] = useState<'dashboard' | 'courses' | 'teachers' | 'settings' | 'reports' | 'notifications' | 'occurrences'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'courses' | 'teachers' | 'settings' | 'reports' | 'notifications' | 'occurrences' | 'professor_schedule' | 'professor_preferences'>('dashboard');
+  const [professorPreferences, setProfessorPreferences] = useState<{ teacherId: string, preferredSubjects: string[], preferredDays: string[], preferredShifts: string[] }[]>([]);
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
   const [teachers, setTeachers] = useState<User[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>(INITIAL_SUBJECTS);
@@ -3436,29 +3825,48 @@ export default function App() {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1">
-          <SidebarItem icon={LayoutDashboard} label="Dashboard" active={currentView === 'dashboard' && !selectedTeacherId} onClick={() => { setCurrentView('dashboard'); setSelectedTeacherId(null); }} />
-          {session.user?.role === 'Admin' && (
+        <nav className="flex-1 px-4 space-y-4 overflow-y-auto pb-8">
+          <div className="space-y-1">
+            <h3 className="px-4 text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Área Administrador</h3>
+            <SidebarItem icon={LayoutDashboard} label="Dashboard" active={currentView === 'dashboard' && !selectedTeacherId} onClick={() => { setCurrentView('dashboard'); setSelectedTeacherId(null); }} />
+            {session.user?.role === 'Admin' && (
+              <SidebarItem 
+                icon={Bell} 
+                label="Notificações" 
+                active={currentView === 'notifications' && !selectedTeacherId} 
+                onClick={() => { setCurrentView('notifications'); setSelectedTeacherId(null); }} 
+                badge={notifications.filter(n => n.status === 'Não lida').length}
+              />
+            )}
+            <SidebarItem icon={Building2} label="Cursos e Disciplinas" active={currentView === 'courses' && !selectedTeacherId} onClick={() => { setCurrentView('courses'); setSelectedTeacherId(null); }} />
+            {session.user?.role === 'Admin' && (
+              <SidebarItem 
+                icon={ClipboardList} 
+                label="Ocorrências" 
+                active={currentView === 'occurrences'} 
+                onClick={() => { setCurrentView('occurrences'); setSelectedTeacherId(null); }} 
+              />
+            )}
+            <SidebarItem icon={Users} label="Docentes" active={(currentView === 'teachers' || !!selectedTeacherId) && !(selectedTeacherId === session.user?.id)} onClick={() => { setCurrentView('teachers'); setSelectedTeacherId(null); }} />
+            <SidebarItem icon={FileText} label="Relatórios" active={currentView === 'reports' && !selectedTeacherId} onClick={() => { setCurrentView('reports'); setSelectedTeacherId(null); }} />
+            <SidebarItem icon={Settings} label="Cronograma" active={currentView === 'settings' && !selectedTeacherId} onClick={() => { setCurrentView('settings'); setSelectedTeacherId(null); }} />
+          </div>
+
+          <div className="pt-2 space-y-1">
+            <h3 className="px-4 text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Área Professor</h3>
             <SidebarItem 
-              icon={Bell} 
-              label="Notificações" 
-              active={currentView === 'notifications' && !selectedTeacherId} 
-              onClick={() => { setCurrentView('notifications'); setSelectedTeacherId(null); }} 
-              badge={notifications.filter(n => n.status === 'Não lida').length}
+              icon={Calendar} 
+              label="Minha Grade Semanal" 
+              active={currentView === 'professor_schedule'} 
+              onClick={() => { setCurrentView('professor_schedule'); setSelectedTeacherId(null); }} 
             />
-          )}
-          <SidebarItem icon={Building2} label="Cursos e Disciplinas" active={currentView === 'courses' && !selectedTeacherId} onClick={() => { setCurrentView('courses'); setSelectedTeacherId(null); }} />
-          {session.user?.role === 'Admin' && (
             <SidebarItem 
-              icon={ClipboardList} 
-              label="Ocorrências" 
-              active={currentView === 'occurrences'} 
-              onClick={() => { setCurrentView('occurrences'); setSelectedTeacherId(null); }} 
+              icon={UserCheck} 
+              label="Preferências" 
+              active={currentView === 'professor_preferences'} 
+              onClick={() => { setCurrentView('professor_preferences'); setSelectedTeacherId(null); }} 
             />
-          )}
-          <SidebarItem icon={Users} label="Docentes" active={(currentView === 'teachers' || !!selectedTeacherId) && !(selectedTeacherId === session.user?.id)} onClick={() => { setCurrentView('teachers'); setSelectedTeacherId(null); }} />
-          <SidebarItem icon={FileText} label="Relatórios" active={currentView === 'reports' && !selectedTeacherId} onClick={() => { setCurrentView('reports'); setSelectedTeacherId(null); }} />
-          <SidebarItem icon={Settings} label="Cronograma" active={currentView === 'settings' && !selectedTeacherId} onClick={() => { setCurrentView('settings'); setSelectedTeacherId(null); }} />
+          </div>
         </nav>
 
         <div className="p-4 mt-auto border-t border-zinc-100">
@@ -3554,6 +3962,33 @@ export default function App() {
                     subjects={subjects}
                     onCreateOccurrence={createOccurrence}
                     onUpdateOccurrence={updateOccurrence}
+                  />
+                )}
+                {currentView === 'professor_schedule' && (
+                  <ProfessorScheduleView 
+                    user={session.user!}
+                    courses={courses}
+                    subjects={subjects}
+                    teachers={teachers}
+                    schedules={schedules}
+                  />
+                )}
+                {currentView === 'professor_preferences' && (
+                  <ProfessorPreferencesView 
+                    user={session.user!}
+                    courses={courses}
+                    subjects={subjects}
+                    preferences={professorPreferences}
+                    onSave={(prefs) => {
+                      const idx = professorPreferences.findIndex(p => p.teacherId === session.user!.id);
+                      if (idx >= 0) {
+                        const newPrefs = [...professorPreferences];
+                        newPrefs[idx] = { ...prefs, teacherId: session.user!.id };
+                        setProfessorPreferences(newPrefs);
+                      } else {
+                        setProfessorPreferences([...professorPreferences, { ...prefs, teacherId: session.user!.id }]);
+                      }
+                    }}
                   />
                 )}
                 {currentView === 'settings' && <SettingsView />}
