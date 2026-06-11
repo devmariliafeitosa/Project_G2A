@@ -12,9 +12,13 @@ from django.contrib.auth.hashers import check_password
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from api.services.disciplina_service import DisciplinasService
+
 import jwt
 
-# from .models import User 
+# from .models import User  
 
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM")
@@ -33,6 +37,7 @@ class LoginView(View):
     """
 
     DEFAULT_FIRST_ACCESS_PASSWORD = "12345678"
+
 
     def post(self, request):
         # Body Parse
@@ -87,3 +92,28 @@ class LoginView(View):
             },
             status=200,
         )
+
+# Cronograma    
+@api_view(["GET"])
+def cronograma(request):
+    horarios = [
+        {"horario": "07:25", },
+        {"horario": "09:25", },
+        {"horario": "09:50", },
+        {"horario": "10:40", },
+        {"horario": "11:50", },
+    ]
+
+    return Response(horarios)
+
+
+# Disciplinas
+@api_view(["GET"])
+def get_disciplines(request):
+
+    disciplinas = DisciplinasService.get_disciplines()
+
+    return Response({
+        "success": True,
+        "data": disciplinas
+    })
