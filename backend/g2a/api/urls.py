@@ -1,4 +1,4 @@
-from api.views import LoginView, get_disciplines, cronograma, get_docentes, get_semestres
+from api.views import LoginView, get_disciplines, cronograma, get_docentes, get_semestres, get_perfil
 from django.urls import path, include
 
 # Integrar com as telas do Frontend
@@ -8,4 +8,5 @@ urlpatterns = [
     path("disciplinas/", get_disciplines),
     path("docentes/", get_docentes),
     path("lancamento-semestre/", get_semestres),
+    path("perfil/", get_perfil),
 ]

@@ -23,6 +23,8 @@ from api.services.professor_service import ProfessorService
 from api.serializers.serializers import ProfessorSerializer, SemestreSerializer
 from api.services.semestre_service import SemestreService
 
+from api.services.perfil_service import PerfilService
+
 import jwt
 
 # from .models import User  
@@ -172,4 +174,25 @@ def get_semestres(request):
     return Response({
         "success": True,
         "data": SemestreSerializer(semestres, many=True).data,
+    })
+
+# Perfil
+@api_view(["GET"])
+@jwt_required
+def get_perfil(request):
+    """
+    GET /perfil/
+    Retorna os dados de perfil do usuário autenticado.
+    """
+    professor = PerfilService.get_perfil_by_payload(request.user_payload)
+
+    if professor is None:
+        return Response(
+            {"success": False, "detail": "Perfil não encontrado."},
+            status=404,
+        )
+
+    return Response({
+        "success": True,
+        "data": ProfessorSerializer(professor).data,
     })
