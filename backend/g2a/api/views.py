@@ -16,6 +16,10 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from api.services.disciplina_service import DisciplinasService
 
+from auth.auth_jwt import jwt_required
+from api.serializers.professor_serializer import ProfessorSerializer
+from api.services.professor_service import ProfessorService
+
 import jwt
 
 # from .models import User  
@@ -116,4 +120,32 @@ def get_disciplines(request):
     return Response({
         "success": True,
         "data": disciplinas
+    })
+
+# Docentes
+@api_view(["GET"])
+@jwt_required
+def get_docentes(request):
+    """
+    GET /docentes/
+    Lista professores (docentes). Requer JWT (Authorization: Bearer <token>).
+
+    Query params opcionais:
+        status            -> "true" | "false"
+        curso_coordenado  -> id do curso coordenado
+        titulacao         -> GRADUADO | ESPECIALISTA | MESTRE | DOUTOR
+        search            -> busca por nome ou email
+    """
+    params = request.query_params
+
+    docentes = ProfessorService.get_docentes(
+        status=params.get("status"),
+        curso_coordenado_id=params.get("curso_coordenado"),
+        titulacao=params.get("titulacao"),
+        search=params.get("search"),
+    )
+
+    return Response({
+        "success": True,
+        "data": ProfessorSerializer(docentes, many=True).data,
     })
