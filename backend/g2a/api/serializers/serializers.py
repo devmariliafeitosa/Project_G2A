@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from api.models import Professor, Curso
+from api.models import Professor, Curso, Semestre
 
 
 class CursoResumoSerializer(serializers.ModelSerializer):
@@ -37,4 +37,13 @@ class ProfessorSerializer(serializers.ModelSerializer):
             "is_coordenador",
             "curso_coordenado",
         ]
+        read_only_fields = fields
+
+
+class SemestreSerializer(serializers.ModelSerializer):
+    """Serializa dados de Semestre (lançamento de semestre)."""
+
+    class Meta:
+        model = Semestre
+        fields = ["id", "nome", "data_inicio", "data_fim", "status"]
         read_only_fields = fields

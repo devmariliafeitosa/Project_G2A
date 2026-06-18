@@ -17,8 +17,11 @@ from rest_framework.decorators import api_view
 from api.services.disciplina_service import DisciplinasService
 
 from auth.auth_jwt import jwt_required
-from api.serializers.professor_serializer import ProfessorSerializer
+from backend.g2a.api.serializers.serializers import ProfessorSerializer
 from api.services.professor_service import ProfessorService
+
+from api.serializers.serializers import ProfessorSerializer, SemestreSerializer
+from api.services.semestre_service import SemestreService
 
 import jwt
 
@@ -148,4 +151,25 @@ def get_docentes(request):
     return Response({
         "success": True,
         "data": ProfessorSerializer(docentes, many=True).data,
+    })
+
+# Lançamento de Semestre (Ainda falta o POST)
+@api_view(["GET"])
+@jwt_required
+def get_semestres(request):
+    """
+    GET /lancamento-semestre/
+    Lista os semestres cadastrados.
+    POST (criação de semestre) será adicionado em etapa futura,
+    junto com as regras de negócio do lançamento.
+
+    Query params opcionais:
+        status -> PLANEJAMENTO | ATIVO | ENCERRADO
+    """
+    semestres = SemestreService.get_semestres(
+        status=request.query_params.get("status")
+    )
+    return Response({
+        "success": True,
+        "data": SemestreSerializer(semestres, many=True).data,
     })
