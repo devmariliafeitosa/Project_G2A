@@ -112,6 +112,10 @@ export interface AcademicSemester {
   offeredSubjectIds?: string[];
   matrixSemester?: number;
   activeSemesters?: number[];
+  startDate?: string;
+  endDate?: string;
+  durationSemesters?: number;
+  turn?: string;
 }
 
 export enum NotificationType {

@@ -61,11 +61,9 @@ export const AllocationsView = ({
   const [teacherCustomWorkloads] = useState<Record<string, number>>({});
   const [allocatedSubjectId, setAllocatedSubjectId] = useState<string>('');
   const [allocatedTeacherId, setAllocatedTeacherId] = useState<string>('');
-  const [allocatedRoom, setAllocatedRoom] = useState<string>('');
-  const [allocatedBlock, setAllocatedBlock] = useState<string>('');
   const [selectedSlots, setSelectedSlots] = useState<{ day: string; slotId: string }[]>([]);
   const [selectedTurn, setSelectedTurn] = useState<string>('Manhã');
-  const [activeTab, setActiveTab] = useState<'selection-g' | 'grid' | 'disponibilidade' | 'lista'>('selection-g');
+  const [activeTab, setActiveTab] = useState<'selection-g' | 'grid' | 'disponibilidade' | 'lista'>('grid');
 
   const selectedCourse = useMemo(() => courses.find(c => c.id === selectedCourseId) || courses[0], [courses, selectedCourseId]);
   const courseSemesters = useMemo(() => semesters.filter(s => s.courseId === selectedCourse?.id), [semesters, selectedCourse]);
@@ -169,12 +167,12 @@ export const AllocationsView = ({
     const newlyAdded: string[] = [];
     selectedSlots.forEach((slot, idx) => {
       const newId = `sch-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 5)}`;
-      onAddAllocation({ id: newId, courseId: selectedCourseId, period: selectedMatrixSemester, dayOfWeek: slot.day, timeSlotId: slot.slotId, subjectId: allocatedSubjectId, teacherId: allocatedTeacherId, semester: selectedSemester, room: allocatedRoom.trim() || undefined, block: allocatedBlock.trim() || undefined });
+      onAddAllocation({ id: newId, courseId: selectedCourseId, period: selectedMatrixSemester, dayOfWeek: slot.day, timeSlotId: slot.slotId, subjectId: allocatedSubjectId, teacherId: allocatedTeacherId, semester: selectedSemester });
       newlyAdded.push(newId);
     });
     setNewlyAddedIds(prev => { const c = new Set(prev); newlyAdded.forEach(id => c.add(id)); return c; });
     showToast(`Disciplina alocada (${selectedSlots.length} horários)!`, 'success');
-    setSelectedSlots([]); setAllocatedRoom(''); setAllocatedBlock('');
+    setSelectedSlots([]); 
   };
 
   const handleRemoveAllocation = (id: string) => {
@@ -254,13 +252,11 @@ export const AllocationsView = ({
           offeredSubjects={offeredSubjects} activeTeachers={activeTeachers}
           allocations={allocations} selectedSemester={selectedSemester}
           allocatedSubjectId={allocatedSubjectId} allocatedTeacherId={allocatedTeacherId}
-          allocatedRoom={allocatedRoom} allocatedBlock={allocatedBlock}
           selectedSlots={selectedSlots} requiredSlotsCount={requiredSlotsCount}
           formProgress={formProgress} selectedSubject={selectedSubject}
           selectedTeacher={selectedTeacher} getTeacherTimeLimit={getTeacherTimeLimit}
           preferencesSummary={preferencesSummary} anyCoursePreferences={anyCoursePreferences}
           onSubjectChange={setAllocatedSubjectId} onTeacherChange={setAllocatedTeacherId}
-          onRoomChange={setAllocatedRoom} onBlockChange={setAllocatedBlock}
           onClearSlots={() => setSelectedSlots([])}
           onRemoveSlot={(day, slotId) => setSelectedSlots(p => p.filter(s => !(s.day === day && s.slotId === slotId)))}
           onSubmit={handlePerformAllocation}

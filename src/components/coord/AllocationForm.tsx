@@ -18,8 +18,7 @@ interface AllocationFormProps {
   selectedSemester: string;
   allocatedSubjectId: string;
   allocatedTeacherId: string;
-  allocatedRoom: string;
-  allocatedBlock: string;
+
   selectedSlots: { day: string; slotId: string }[];
   requiredSlotsCount: number;
   formProgress: number;
@@ -30,8 +29,7 @@ interface AllocationFormProps {
   anyCoursePreferences: boolean;
   onSubjectChange: (id: string) => void;
   onTeacherChange: (id: string) => void;
-  onRoomChange: (v: string) => void;
-  onBlockChange: (v: string) => void;
+
   onClearSlots: () => void;
   onRemoveSlot: (day: string, slotId: string) => void;
   onSubmit: (e?: React.FormEvent) => void;
@@ -48,11 +46,11 @@ const StepDot = ({ done, step }: { done: boolean; step: number }) => (
 
 const AllocationForm = ({
   offeredSubjects, activeTeachers, allocations, selectedSemester,
-  allocatedSubjectId, allocatedTeacherId, allocatedRoom, allocatedBlock,
+  allocatedSubjectId, allocatedTeacherId,
   selectedSlots, requiredSlotsCount, formProgress,
   selectedSubject, selectedTeacher, getTeacherTimeLimit,
   preferencesSummary, anyCoursePreferences,
-  onSubjectChange, onTeacherChange, onRoomChange, onBlockChange,
+  onSubjectChange, onTeacherChange,
   onClearSlots, onRemoveSlot, onSubmit,
 }: AllocationFormProps) => (
   <div className="lg:col-span-4 space-y-6">
@@ -169,19 +167,6 @@ const AllocationForm = ({
           )}
         </div>
 
-        {/* Sala e Bloco */}
-        <div className="grid grid-cols-2 gap-3 pl-4">
-          <div className="space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Sala acadêmica</span>
-            <input type="text" placeholder="Ex: 104" value={allocatedRoom} onChange={e => onRoomChange(e.target.value)}
-              className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#32a041] text-zinc-800 placeholder:text-zinc-300 shadow-inner" />
-          </div>
-          <div className="space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Bloco / Prédio</span>
-            <input type="text" placeholder="Ex: Bloco A" value={allocatedBlock} onChange={e => onBlockChange(e.target.value)}
-              className="w-full h-11 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#32a041] text-zinc-800 placeholder:text-zinc-300 shadow-inner" />
-          </div>
-        </div>
 
         {selectedTeacher?.leaveType && selectedTeacher.leaveType !== 'Nenhum' && (
           <div className="pl-4">

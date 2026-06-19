@@ -347,15 +347,7 @@ const CoursesView = ({
                               <option value={120}>120h</option>
                             </select>
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Período</label>
-                            <input 
-                              type="number" 
-                              value={newSubject.period} 
-                              onChange={e => { setNewSubject({...newSubject, period: parseInt(e.target.value)}); setSubjectValidationError(null); }} 
-                              className={`w-full border ${subjectValidationError && (!newSubject.period || newSubject.period < 1) ? 'border-rose-300 bg-rose-50' : 'border-zinc-200'} h-8 px-2 rounded text-xs outline-none`} 
-                            />
-                          </div>
+
                           <div className="space-y-1">
                             <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Tipo</label>
                             <select 
@@ -374,11 +366,11 @@ const CoursesView = ({
                             <div className="flex gap-2">
                               <button 
                                 onClick={() => { 
-                                  if (!newSubject.name || !newSubject.workload || !newSubject.period || newSubject.period < 1) {
+                                  if (!newSubject.name || !newSubject.workload) {
                                     setSubjectValidationError("Campos obrigatórios!");
                                     return;
                                   }
-                                  onAddSubject(newSubject.name, newSubject.workload, course.id, newSubject.period, newSubject.type); 
+                                  onAddSubject(newSubject.name, newSubject.workload, course.id, newSubject.period || 1, newSubject.type); 
                                   setAddingSubjectTo(null); 
                                   setSubjectValidationError(null);
                                   setNewSubject({ name: '', workload: 80, period: 1, type: 'Obrigatória' });
