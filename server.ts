@@ -31,14 +31,14 @@ const users = [
     ingressoYear: "",
     regime: "40h/DE (Dedicação Exclusiva)",
     leaveType: "Ativo",
-    hasReducedWorkload: false
-  },    
+    hasReducedWorkload: false,
+  },
   {
     id: "100",
     email: "coord@ifce.edu.br",
     login: "coord",
     name: "Saulo Anderson",
-    password: bcrypt.hashSync("Coord@123", 10),
+    password: bcrypt.hashSync("123456", 10),
     role: "Coordenador",
     registration: "COORD01",
     campus: "Tauá",
@@ -51,36 +51,48 @@ const users = [
     regime: "Dedicação Exclusiva",
     leaveType: "Nenhum",
     hasReducedWorkload: false,
-    hasTeachingRole: true
-  }
-]; 
+    hasTeachingRole: true,
+  },
+];
 
 const notifications = [
   {
     id: "1",
     type: "Alerta",
     title: "Carga horária excedida",
-    description: "O docente João Silva excedeu o limite de 20h em sala de aula.",
+    description:
+      "O docente João Silva excedeu o limite de 20h em sala de aula.",
     timestamp: new Date().toISOString(),
     status: "Não lida",
     priority: "Alta",
-    relatedPath: "teachers"
+    relatedPath: "teachers",
   },
   {
     id: "2",
     type: "Solicitação",
     title: "Nova solicitação de alocação",
-    description: "O coordenador Pedro Santos solicitou alocação para a disciplina de Cálculo I.",
+    description:
+      "O coordenador Pedro Santos solicitou alocação para a disciplina de Cálculo I.",
     timestamp: new Date(Date.now() - 3600000).toISOString(),
     status: "Não lida",
     priority: "Média",
-    relatedPath: "courses"
-  }
+    relatedPath: "courses",
+  },
 ];
 
 const reportHistory = [
-  { id: '1', name: 'Grade de Horários - 2024.1', user: 'Admin Geral', date: '14/05/2026 14:20' },
-  { id: '2', name: 'Lotação Docente - Geral', user: 'Admin Geral', date: '12/05/2026 09:15' },
+  {
+    id: "1",
+    name: "Grade de Horários - 2024.1",
+    user: "Admin Geral",
+    date: "14/05/2026 14:20",
+  },
+  {
+    id: "2",
+    name: "Lotação Docente - Geral",
+    user: "Admin Geral",
+    date: "12/05/2026 09:15",
+  },
 ];
 
 const occurrences = [
@@ -96,9 +108,14 @@ const occurrences = [
     affectedSubjectIds: ["1", "2"], // Cálculo I, Álgebra Linear
     impactDescription: "Afastamento integral para capacitação.",
     auditLogs: [
-      { id: '1', user: 'Administrador Geral', action: 'Criação da ocorrência', timestamp: '2026-05-14T15:00:00Z' }
-    ]
-  }
+      {
+        id: "1",
+        user: "Administrador Geral",
+        action: "Criação da ocorrência",
+        timestamp: "2026-05-14T15:00:00Z",
+      },
+    ],
+  },
 ];
 
 // Helper for general authentication
@@ -131,7 +148,9 @@ const adminOnly = (req: any, res: any, next: any) => {
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
   // Login can be email, login field or registration (SIAPE)
-  const user = users.find(u => u.email === email || u.login === email || u.registration === email);
+  const user = users.find(
+    (u) => u.email === email || u.login === email || u.registration === email,
+  );
 
   if (!user || !bcrypt.compareSync(password, user.password)) {
     return res.status(401).json({ error: "Credenciais incorretas" });
@@ -141,31 +160,38 @@ app.post("/api/login", async (req, res) => {
     return res.status(403).json({ error: "Este usuário está desativado" });
   }
 
-  const token = jwt.sign({ 
-    id: user.id, 
-    email: user.email,
-    name: user.name,
-    role: user.role,
-    registration: user.registration,
-    campus: user.campus,
-    hasTeachingRole: user.hasTeachingRole || false 
-  }, JWT_SECRET, { expiresIn: "1h" });
+  const token = jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      registration: user.registration,
+      campus: user.campus,
+      hasTeachingRole: user.hasTeachingRole || false,
+    },
+    JWT_SECRET,
+    { expiresIn: "1h" },
+  );
 
-  res.json({ token, user: { 
-    id: user.id, 
-    email: user.email, 
-    name: user.name, 
-    role: user.role,
-    registration: user.registration,
-    campus: user.campus,
-    status: user.status,
-    hasTeachingRole: user.hasTeachingRole || false
-  } });
+  res.json({
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      registration: user.registration,
+      campus: user.campus,
+      status: user.status,
+      hasTeachingRole: user.hasTeachingRole || false,
+    },
+  });
 });
 
 app.post("/api/change-password", authenticate, (req: any, res) => {
   const { currentPassword, newPassword } = req.body;
-  const user = users.find(u => u.id === req.user.id);
+  const user = users.find((u) => u.id === req.user.id);
 
   if (!user) {
     return res.status(404).json({ error: "Usuário não encontrado" });
@@ -176,13 +202,18 @@ app.post("/api/change-password", authenticate, (req: any, res) => {
   }
 
   // Security validation (Server side)
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/;
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/;
   if (!passwordRegex.test(newPassword)) {
-    return res.status(400).json({ error: "A nova senha não atende aos critérios de segurança" });
+    return res
+      .status(400)
+      .json({ error: "A nova senha não atende aos critérios de segurança" });
   }
 
   if (bcrypt.compareSync(newPassword, user.password)) {
-    return res.status(400).json({ error: "A nova senha não pode ser igual à senha atual" });
+    return res
+      .status(400)
+      .json({ error: "A nova senha não pode ser igual à senha atual" });
   }
 
   user.password = bcrypt.hashSync(newPassword, 10);
@@ -190,8 +221,8 @@ app.post("/api/change-password", authenticate, (req: any, res) => {
 });
 
 app.put("/api/profile", authenticate, (req: any, res) => {
-  const user = users.find(u => u.id === req.user.id);
-  
+  const user = users.find((u) => u.id === req.user.id);
+
   if (!user) {
     return res.status(404).json({ error: "Usuário não encontrado" });
   }
@@ -200,11 +231,18 @@ app.put("/api/profile", authenticate, (req: any, res) => {
 
   // Validate required fields
   if (!name || !email || !areaAtuacao || !birthDate) {
-    return res.status(400).json({ error: "Campos Nome, E-mail, Data de Nascimento e Área de Atuação são obrigatórios" });
+    return res
+      .status(400)
+      .json({
+        error:
+          "Campos Nome, E-mail, Data de Nascimento e Área de Atuação são obrigatórios",
+      });
   }
 
-  if (!email.endsWith('@ifce.edu.br')) {
-    return res.status(400).json({ error: "O e-mail deve ser institucional (@ifce.edu.br)" });
+  if (!email.endsWith("@ifce.edu.br")) {
+    return res
+      .status(400)
+      .json({ error: "O e-mail deve ser institucional (@ifce.edu.br)" });
   }
 
   // Update only allowed fields
@@ -219,7 +257,7 @@ app.put("/api/profile", authenticate, (req: any, res) => {
 
 app.post("/api/deactivate-account", authenticate, (req: any, res) => {
   const { password } = req.body;
-  const user = users.find(u => u.id === req.user.id);
+  const user = users.find((u) => u.id === req.user.id);
 
   if (!user) {
     return res.status(404).json({ error: "Usuário não encontrado" });
@@ -230,8 +268,12 @@ app.post("/api/deactivate-account", authenticate, (req: any, res) => {
   }
 
   user.status = "Inativo";
-  console.log(`Conta desativada: ${user.name} (ID: ${user.id}) em ${new Date().toISOString()}`);
-  res.json({ message: "Conta desativada com sucesso. Você será desconectado." });
+  console.log(
+    `Conta desativada: ${user.name} (ID: ${user.id}) em ${new Date().toISOString()}`,
+  );
+  res.json({
+    message: "Conta desativada com sucesso. Você será desconectado.",
+  });
 });
 
 app.post("/api/refresh", (req, res) => {
@@ -240,20 +282,25 @@ app.post("/api/refresh", (req, res) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const user = users.find(u => u.id === decoded.id);
+    const user = users.find((u) => u.id === decoded.id);
     if (!user) return res.status(401).json({ error: "Usuário não encontrado" });
-    if (user.status === "Inativo") return res.status(403).json({ error: "Usuário inativo" });
+    if (user.status === "Inativo")
+      return res.status(403).json({ error: "Usuário inativo" });
 
-    const newToken = jwt.sign({ 
-      id: user.id, 
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      registration: user.registration,
-      campus: user.campus,
-      hasTeachingRole: user.hasTeachingRole || false
-    }, JWT_SECRET, { expiresIn: "1h" });
-    
+    const newToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        registration: user.registration,
+        campus: user.campus,
+        hasTeachingRole: user.hasTeachingRole || false,
+      },
+      JWT_SECRET,
+      { expiresIn: "1h" },
+    );
+
     res.json({ token: newToken });
   } catch (err) {
     res.status(401).json({ error: "Token inválido ou expirado" });
@@ -264,26 +311,52 @@ app.post("/api/refresh", (req, res) => {
 app.get("/api/users", authenticate, (req: any, res) => {
   // Admins veem todos; coordenadores e professores não veem usuários Admin
   const safeUsers = users
-    .filter(u => req.user.role === "Admin" || u.role !== "Admin")
+    .filter((u) => req.user.role === "Admin" || u.role !== "Admin")
     .map(({ password, ...u }) => u);
   res.json(safeUsers);
 });
 
 app.post("/api/users", adminOnly, (req, res) => {
-  const { name, email, role, registration, campus, password, birthDate, areaAtuacao, login, ingressoYear, regime, status } = req.body;
-  
-  if (!name || !email || !role || !registration || !birthDate || !areaAtuacao || !ingressoYear || !regime) {
-     return res.status(400).json({ error: "Todos os campos orbigatórios devem ser preenchidos" });
+  const {
+    name,
+    email,
+    role,
+    registration,
+    campus,
+    password,
+    birthDate,
+    areaAtuacao,
+    login,
+    ingressoYear,
+    regime,
+    status,
+  } = req.body;
+
+  if (
+    !name ||
+    !email ||
+    !role ||
+    !registration ||
+    !birthDate ||
+    !areaAtuacao ||
+    !ingressoYear ||
+    !regime
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Todos os campos orbigatórios devem ser preenchidos" });
   }
 
-  if (!email.endsWith('@ifce.edu.br')) {
-    return res.status(400).json({ error: "O e-mail deve ser institucional (@ifce.edu.br)" });
+  if (!email.endsWith("@ifce.edu.br")) {
+    return res
+      .status(400)
+      .json({ error: "O e-mail deve ser institucional (@ifce.edu.br)" });
   }
 
-  if (users.find(u => u.email === email)) {
+  if (users.find((u) => u.email === email)) {
     return res.status(400).json({ error: "E-mail já cadastrado" });
   }
-  if (login && users.find(u => u.login === login)) {
+  if (login && users.find((u) => u.login === login)) {
     return res.status(400).json({ error: "Login de acesso já cadastrado" });
   }
 
@@ -304,7 +377,7 @@ app.post("/api/users", adminOnly, (req, res) => {
     disciplinasMinistradas: [],
     leaveType: req.body.leaveType || "Ativo",
     hasReducedWorkload: req.body.hasReducedWorkload || false,
-    password: bcrypt.hashSync(password || "ifce123", 10)
+    password: bcrypt.hashSync(password || "ifce123", 10),
   };
 
   users.push(newUser);
@@ -314,12 +387,13 @@ app.post("/api/users", adminOnly, (req, res) => {
 
 app.put("/api/users/:id", adminOnly, (req, res) => {
   const { id } = req.params;
-  const index = users.findIndex(u => u.id === id);
-  
-  if (index === -1) return res.status(404).json({ error: "Usuário não encontrado" });
+  const index = users.findIndex((u) => u.id === id);
+
+  if (index === -1)
+    return res.status(404).json({ error: "Usuário não encontrado" });
 
   const { email } = req.body;
-  if (email && users.find(u => u.email === email && u.id !== id)) {
+  if (email && users.find((u) => u.email === email && u.id !== id)) {
     return res.status(400).json({ error: "E-mail já cadastrado" });
   }
 
@@ -330,9 +404,10 @@ app.put("/api/users/:id", adminOnly, (req, res) => {
 
 app.delete("/api/users/:id", adminOnly, (req, res) => {
   const { id } = req.params;
-  const index = users.findIndex(u => u.id === id);
-  if (index === -1) return res.status(404).json({ error: "Usuário não encontrado" });
-  
+  const index = users.findIndex((u) => u.id === id);
+  if (index === -1)
+    return res.status(404).json({ error: "Usuário não encontrado" });
+
   users.splice(index, 1);
   res.status(204).send();
 });
@@ -347,7 +422,7 @@ app.post("/api/notifications", adminOnly, (req, res) => {
     id: Date.now().toString(),
     status: "Não lida",
     timestamp: new Date().toISOString(),
-    ...req.body
+    ...req.body,
   };
   notifications.unshift(newNotif);
   res.status(201).json(newNotif);
@@ -355,8 +430,9 @@ app.post("/api/notifications", adminOnly, (req, res) => {
 
 app.patch("/api/notifications/:id", adminOnly, (req, res) => {
   const { id } = req.params;
-  const index = notifications.findIndex(n => n.id === id);
-  if (index === -1) return res.status(404).json({ error: "Notificação não encontrada" });
+  const index = notifications.findIndex((n) => n.id === id);
+  if (index === -1)
+    return res.status(404).json({ error: "Notificação não encontrada" });
 
   notifications[index] = { ...notifications[index], ...req.body };
   res.json(notifications[index]);
@@ -364,8 +440,9 @@ app.patch("/api/notifications/:id", adminOnly, (req, res) => {
 
 app.delete("/api/notifications/:id", adminOnly, (req, res) => {
   const { id } = req.params;
-  const index = notifications.findIndex(n => n.id === id);
-  if (index === -1) return res.status(404).json({ error: "Notificação não encontrada" });
+  const index = notifications.findIndex((n) => n.id === id);
+  if (index === -1)
+    return res.status(404).json({ error: "Notificação não encontrada" });
 
   notifications.splice(index, 1);
   res.status(204).send();
@@ -380,8 +457,8 @@ app.post("/api/reports/history", adminOnly, (req, res) => {
   const newEntry = {
     id: Date.now().toString(),
     user: "Admin Geral", // Ideally from req.user
-    date: new Date().toLocaleString('pt-BR'),
-    ...req.body
+    date: new Date().toLocaleString("pt-BR"),
+    ...req.body,
   };
   reportHistory.unshift(newEntry);
   res.status(201).json(newEntry);
@@ -402,9 +479,9 @@ app.post("/api/occurrences", adminOnly, (req: any, res) => {
         id: Date.now().toString(),
         user: req.user.name,
         action: "Criação da ocorrência",
-        timestamp: new Date().toISOString()
-      }
-    ]
+        timestamp: new Date().toISOString(),
+      },
+    ],
   };
   occurrences.unshift(newOccurrence);
   res.status(201).json(newOccurrence);
@@ -412,8 +489,9 @@ app.post("/api/occurrences", adminOnly, (req: any, res) => {
 
 app.patch("/api/occurrences/:id", adminOnly, (req: any, res) => {
   const { id } = req.params;
-  const index = occurrences.findIndex(o => o.id === id);
-  if (index === -1) return res.status(404).json({ error: "Ocorrência não encontrada" });
+  const index = occurrences.findIndex((o) => o.id === id);
+  if (index === -1)
+    return res.status(404).json({ error: "Ocorrência não encontrada" });
 
   const oldStatus = occurrences[index].status;
   const newStatus = req.body.status;
@@ -428,20 +506,20 @@ app.patch("/api/occurrences/:id", adminOnly, (req: any, res) => {
     id: Date.now().toString(),
     user: req.user.name,
     action: action,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
-  occurrences[index] = { 
-    ...occurrences[index], 
+  occurrences[index] = {
+    ...occurrences[index],
     ...req.body,
-    auditLogs: [logEntry, ...occurrences[index].auditLogs]
+    auditLogs: [logEntry, ...occurrences[index].auditLogs],
   };
   res.json(occurrences[index]);
 });
 
 app.post("/api/forgot-password", (req, res) => {
   const { email } = req.body;
-  const user = users.find(u => u.email === email);
+  const user = users.find((u) => u.email === email);
 
   if (!user) {
     return res.status(404).json({ error: "E-mail não encontrado" });
