@@ -92,9 +92,9 @@ class Semestre(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=models.Q(data_fim__gt=models.F("data_inicio")),
-                name="chk_datas"
-            )
+        condition=models.Q(data_fim__gt=models.F("data_inicio")),
+        name="chk_datas"
+    )
         ]
 
 # Relação professor-disciplina
@@ -134,7 +134,7 @@ class Alocacao(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=models.Q(horario_fim__gt=models.F("horario_inicio")),
+                condition=models.Q(horario_fim__gt=models.F("horario_inicio")),
                 name="chk_horario"
             ),
             models.UniqueConstraint(

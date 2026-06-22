@@ -12,9 +12,22 @@ from django.contrib.auth.hashers import check_password
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from api.services.disciplina_service import DisciplinasService
+
+from auth.auth_jwt import jwt_required
+from backend.g2a.api.serializers.serializers import ProfessorSerializer
+from api.services.professor_service import ProfessorService
+
+from api.serializers.serializers import ProfessorSerializer, SemestreSerializer
+from api.services.semestre_service import SemestreService
+
+from api.services.perfil_service import PerfilService
+
 import jwt
 
-# from .models import User 
+# from .models import User  
 
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM")
@@ -33,6 +46,7 @@ class LoginView(View):
     """
 
     DEFAULT_FIRST_ACCESS_PASSWORD = "12345678"
+
 
     def post(self, request):
         # Body Parse
@@ -87,3 +101,98 @@ class LoginView(View):
             },
             status=200,
         )
+
+# Cronograma    
+@api_view(["GET"])
+def cronograma(request):
+    horarios = [
+        {"horario": "07:25", },
+        {"horario": "09:25", },
+        {"horario": "09:50", },
+        {"horario": "10:40", },
+        {"horario": "11:50", },
+    ]
+
+    return Response(horarios)
+
+
+# Disciplinas
+@api_view(["GET"])
+def get_disciplines(request):
+
+    disciplinas = DisciplinasService.get_disciplines()
+
+    return Response({
+        "success": True,
+        "data": disciplinas
+    })
+
+# Docentes
+@api_view(["GET"])
+@jwt_required
+def get_docentes(request):
+    """
+    GET /docentes/
+    Lista professores (docentes). Requer JWT (Authorization: Bearer <token>).
+
+    Query params opcionais:
+        status            -> "true" | "false"
+        curso_coordenado  -> id do curso coordenado
+        titulacao         -> GRADUADO | ESPECIALISTA | MESTRE | DOUTOR
+        search            -> busca por nome ou email
+    """
+    params = request.query_params
+
+    docentes = ProfessorService.get_docentes(
+        status=params.get("status"),
+        curso_coordenado_id=params.get("curso_coordenado"),
+        titulacao=params.get("titulacao"),
+        search=params.get("search"),
+    )
+
+    return Response({
+        "success": True,
+        "data": ProfessorSerializer(docentes, many=True).data,
+    })
+
+# Lançamento de Semestre (Ainda falta o POST)
+@api_view(["GET"])
+@jwt_required
+def get_semestres(request):
+    """
+    GET /lancamento-semestre/
+    Lista os semestres cadastrados.
+    POST (criação de semestre) será adicionado em etapa futura,
+    junto com as regras de negócio do lançamento.
+
+    Query params opcionais:
+        status -> PLANEJAMENTO | ATIVO | ENCERRADO
+    """
+    semestres = SemestreService.get_semestres(
+        status=request.query_params.get("status")
+    )
+    return Response({
+        "success": True,
+        "data": SemestreSerializer(semestres, many=True).data,
+    })
+
+# Perfil
+@api_view(["GET"])
+@jwt_required
+def get_perfil(request):
+    """
+    GET /perfil/
+    Retorna os dados de perfil do usuário autenticado.
+    """
+    professor = PerfilService.get_perfil_by_payload(request.user_payload)
+
+    if professor is None:
+        return Response(
+            {"success": False, "detail": "Perfil não encontrado."},
+            status=404,
+        )
+
+    return Response({
+        "success": True,
+        "data": ProfessorSerializer(professor).data,
+    })
