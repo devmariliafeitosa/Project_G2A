@@ -160,7 +160,7 @@ class ProfessorService:
 
                 if campo == "id_curso_coordenado":
 
-                    professor.id_curso_coordenado_id = (
+                    professor.curso_coordenado = (
                         data[campo]
                     )
 
