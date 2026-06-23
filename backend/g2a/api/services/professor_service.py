@@ -1,43 +1,193 @@
-from django.db.models import Q
-
 from api.models import Professor
 
 
 class ProfessorService:
-    """
-    Camada de serviço para consultas relacionadas a Professor (docente).
-    Mantém a lógica de acesso a dados fora das views, no mesmo padrão
-    usado em DisciplinasService.
-    """
 
     @staticmethod
-    def get_docentes(status=None, curso_coordenado_id=None, titulacao=None, search=None):
-        """
-        Retorna queryset de Professor filtrado pelos parâmetros informados.
-        Todos os filtros são opcionais e combinados com AND.
+    def get_professores(
+        status=None,
+        titulacao=None,
+        curso_coordenado_id=None,
+        search=None
+    ):
 
-        Args:
-            status: string vinda de query param ("true"/"false"/"1"/"0").
-            curso_coordenado_id: id do Curso coordenado pelo professor.
-            titulacao: uma das opções de Titulacao (ex: "MESTRE").
-            search: busca parcial (case-insensitive) por nome ou e-mail.
-        """
-        queryset = Professor.objects.select_related("curso_coordenado").all()
+        professores = (
+            Professor.objects
+            .select_related(
+                "id_curso_coordenado"
+            )
+            .all()
+        )
 
         if status is not None:
-            status_bool = str(status).strip().lower() in ("1", "true", "ativo")
-            queryset = queryset.filter(status=status_bool)
 
-        if curso_coordenado_id:
-            queryset = queryset.filter(curso_coordenado_id=curso_coordenado_id)
-
-        if titulacao:
-            queryset = queryset.filter(titulacao=titulacao.strip().upper())
-
-        if search:
-            search = search.strip()
-            queryset = queryset.filter(
-                Q(nome__icontains=search) | Q(email__icontains=search)
+            professores = professores.filter(
+                status=status
             )
 
-        return queryset.order_by("nome")
+        if titulacao:
+
+            professores = professores.filter(
+                titulacao=titulacao
+            )
+
+        if curso_coordenado_id:
+
+            professores = professores.filter(
+                id_curso_coordenado=curso_coordenado_id
+            )
+
+        if search:
+
+            professores = professores.filter(
+                nome__icontains=search
+            ) | professores.filter(
+                email__icontains=search
+            )
+
+        return professores
+
+
+    @staticmethod
+    def get_professor_by_id(id_prof):
+
+        try:
+
+            return (
+                Professor.objects
+                .select_related(
+                    "id_curso_coordenado"
+                )
+                .get(
+                    id_prof=id_prof
+                )
+            )
+
+        except Professor.DoesNotExist:
+
+            return None
+
+
+    @staticmethod
+    def create_professor(data):
+
+        professor = Professor.objects.create(
+
+            nome=data["nome"],
+
+            siape=data.get(
+                "siape"
+            ),
+
+            email=data.get(
+                "email"
+            ),
+
+            data_nascimento=data.get(
+                "data_nascimento"
+            ),
+
+            ano_egresso=data["ano_egresso"],
+
+            area_atuacao=data.get(
+                "area_atuacao"
+            ),
+
+            status=data.get(
+                "status",
+                True
+            ),
+
+            senha=data["senha"],
+
+            titulacao=data.get(
+                "titulacao"
+            ),
+
+            carga_horaria_maxima=data.get(
+                "carga_horaria_maxima",
+                20
+            ),
+
+            is_coordenador=data.get(
+                "is_coordenador",
+                False
+            ),
+
+            id_curso_coordenado_id=data.get(
+                "id_curso_coordenado"
+            )
+        )
+
+        return professor
+
+
+    @staticmethod
+    def update_professor(
+        id_prof,
+        data
+    ):
+
+        professor = (
+            ProfessorService
+            .get_professor_by_id(id_prof)
+        )
+
+        if not professor:
+
+            return None
+
+        campos_permitidos = [
+
+            "nome",
+            "siape",
+            "email",
+            "data_nascimento",
+            "ano_egresso",
+            "area_atuacao",
+            "status",
+            "senha",
+            "titulacao",
+            "carga_horaria_maxima",
+            "is_coordenador",
+            "id_curso_coordenado"
+
+        ]
+
+        for campo in campos_permitidos:
+
+            if campo in data:
+
+                if campo == "id_curso_coordenado":
+
+                    professor.id_curso_coordenado_id = (
+                        data[campo]
+                    )
+
+                else:
+
+                    setattr(
+                        professor,
+                        campo,
+                        data[campo]
+                    )
+
+        professor.save()
+
+        return professor
+
+
+    @staticmethod
+    def delete_professor(id_prof):
+        professor = (
+            ProfessorService
+            .get_professor_by_id(id_prof)
+        )
+
+        if not professor:
+
+            return False
+
+        professor.delete()
+
+        return True
