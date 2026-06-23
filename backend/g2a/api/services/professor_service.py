@@ -14,7 +14,7 @@ class ProfessorService:
         professores = (
             Professor.objects
             .select_related(
-                "id_curso_coordenado"
+                "curso_coordenado"
             )
             .all()
         )
@@ -34,7 +34,7 @@ class ProfessorService:
         if curso_coordenado_id:
 
             professores = professores.filter(
-                id_curso_coordenado=curso_coordenado_id
+                curso_coordenado_id=curso_coordenado_id
             )
 
         if search:
@@ -56,7 +56,7 @@ class ProfessorService:
             return (
                 Professor.objects
                 .select_related(
-                    "id_curso_coordenado"
+                    "curso_coordenado"
                 )
                 .get(
                     id_prof=id_prof
@@ -114,8 +114,8 @@ class ProfessorService:
                 False
             ),
 
-            id_curso_coordenado_id=data.get(
-                "id_curso_coordenado"
+            curso_coordenado_id=data.get(
+                "curso_coordenado"
             )
         )
 
@@ -150,7 +150,7 @@ class ProfessorService:
             "titulacao",
             "carga_horaria_maxima",
             "is_coordenador",
-            "id_curso_coordenado"
+            "curso_coordenado"
 
         ]
 
@@ -158,7 +158,7 @@ class ProfessorService:
 
             if campo in data:
 
-                if campo == "id_curso_coordenado":
+                if campo == "curso_coordenado":
 
                     professor.curso_coordenado = (
                         data[campo]

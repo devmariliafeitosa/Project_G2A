@@ -44,7 +44,7 @@ class ProfessorSerializer(serializers.ModelSerializer):
             "titulacao",
             "carga_horaria_maxima",
             "is_coordenador",
-            "id_curso_coordenado",
+            "curso_coordenado",
             "curso_coordenado_nome",
             "created_at",
             "updated_at"
@@ -54,12 +54,12 @@ class ProfessorSerializer(serializers.ModelSerializer):
 class DisciplinaSerializer(serializers.ModelSerializer):
 
     curso_nome = serializers.CharField(
-        source="id_curso.nome",
+        source="curso.nome",
         read_only=True
     )
 
     prerequisito_nome = serializers.CharField(
-        source="id_disciplina_prereq.nome",
+        source="disciplina_prereq.nome",
         read_only=True
     )
 
@@ -72,9 +72,9 @@ class DisciplinaSerializer(serializers.ModelSerializer):
             "nome",
             "carga_horaria",
             "obrigatoria",
-            "id_disciplina_prereq",
+            "disciplina_prereq",
             "prerequisito_nome",
-            "id_curso",
+            "curso",
             "curso_nome",
             "created_at",
             "updated_at"
@@ -84,7 +84,7 @@ class DisciplinaSerializer(serializers.ModelSerializer):
 class TurmaSerializer(serializers.ModelSerializer):
 
     curso_nome = serializers.CharField(
-        source="id_curso.nome",
+        source="curso.nome",
         read_only=True
     )
 
@@ -97,7 +97,7 @@ class TurmaSerializer(serializers.ModelSerializer):
             "nome",
             "periodo",
             "turno",
-            "id_curso",
+            "curso",
             "curso_nome",
             "created_at",
             "updated_at"

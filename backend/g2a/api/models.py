@@ -111,7 +111,7 @@ class Professor(models.Model):
     data_nascimento = models.DateField(
         null=True
     )
-    ano_egresso = models.SmallIntegerField()
+    ano_egresso = models.DateField()
 
     area_atuacao = models.CharField(
         max_length=150,
