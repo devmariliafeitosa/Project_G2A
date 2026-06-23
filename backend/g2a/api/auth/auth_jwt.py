@@ -1,10 +1,23 @@
 import jwt
 from functools import wraps
 from django.http import JsonResponse
-import os
+from decouple import config
 
-JWT_SECRET = os.environ["JWT_SECRET"]
-JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
+JWT_SECRET = config(
+    "JWT_SECRET"
+)
+
+JWT_ALGORITHM = config(
+    "JWT_ALGORITHM",
+    default="HS256"
+)
+
+JWT_EXPIRATION_HOURS = int(
+    config(
+        "JWT_EXPIRATION_HOURS",
+        default=8
+    )
+)
 
 
 def jwt_required(view_func):
