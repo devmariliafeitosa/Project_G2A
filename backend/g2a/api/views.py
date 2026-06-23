@@ -4,21 +4,41 @@ from decouple import config
 
 import jwt
 
+from django.db import models
 from django.http import JsonResponse
 from django.views import View
 from django.contrib.auth.hashers import check_password
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 
-from api.models import Professor
+from api.models import (
+    Professor,
+    Curso,
+    Disciplina,
+    Turma,
+    Semestre,
+    SemestreStatus,
+    CursoProfessor,
+    DisciplinaProfessor,
+    Afastamento,
+    Alocacao
+)
 from api.auth.auth_jwt import jwt_required
 
 from api.serializers.serializers import (
+    CursoSerializer,
     ProfessorSerializer,
-    SemestreSerializer
+    DisciplinaSerializer,
+    TurmaSerializer,
+    SemestreSerializer,
+    CursoProfessorSerializer,
+    DisciplinaProfessorSerializer,
+    AfastamentoSerializer,
+    AlocacaoSerializer
 )
 
 from api.services.disciplina_service import DisciplinasService
@@ -29,12 +49,14 @@ from api.services.notify_service import NotificacaoService
 
 
 JWT_SECRET = config(
-    "JWT_SECRET"
+    "JWT_SECRET",
+    cast=str
 )
 
 JWT_ALGORITHM = config(
     "JWT_ALGORITHM",
-    default="HS256"
+    default="HS256",
+    cast=str
 )
 
 JWT_EXPIRATION_HOURS = int(
@@ -128,7 +150,7 @@ class LoginView(View):
 
         payload = {
 
-            "sub": str(professor.id),
+            "sub": str(professor.id_prof),
 
             "email": professor.email,
 
@@ -144,8 +166,8 @@ class LoginView(View):
 
         token = jwt.encode(
             payload,
-            JWT_SECRET,
-            algorithm=JWT_ALGORITHM
+            str(JWT_SECRET),
+            algorithm=str(JWT_ALGORITHM)
         )
 
 
@@ -253,31 +275,408 @@ def get_docentes(request):
 # SEMESTRES
 # ==========================
 
-@api_view(["GET"])
+@api_view(["GET", "POST"])
 @jwt_required
-def get_semestres(request):
-
-    semestres = (
-        SemestreService.get_semestres(
-            status=request.query_params.get(
-                "status"
+def lancamento_semestre(request):
+    if request.method == "GET":
+        semestres = (
+            SemestreService.get_semestres(
+                status=request.query_params.get(
+                    "status"
+                )
             )
         )
-    )
+        return Response({
+            "success": True,
+            "data":
+                SemestreSerializer(
+                    semestres,
+                    many=True
+                ).data
+        })
 
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return Response({"success": False, "detail": "Payload inválido."}, status=400)
+
+    nome = body.get("nome")
+    data_inicio = body.get("data_inicio")
+    data_fim = body.get("data_fim")
+    status = body.get("status")
+
+    if not nome or not data_inicio or not data_fim or not status:
+        return Response({"success": False, "detail": "nome, data_inicio, data_fim e status são obrigatórios."}, status=400)
+
+    try:
+        data_inicio = datetime.datetime.fromisoformat(data_inicio).date()
+        data_fim = datetime.datetime.fromisoformat(data_fim).date()
+    except ValueError:
+        return Response({"success": False, "detail": "Formato de data inválido. Use AAAA-MM-DD."}, status=400)
+
+    status = status.strip().upper()
+    if status not in {choice.value for choice in SemestreStatus}:
+        return Response({"success": False, "detail": "Status inválido."}, status=400)
+
+    if data_fim < data_inicio:
+        return Response({"success": False, "detail": "data_fim deve ser posterior a data_inicio."}, status=400)
+
+    semestre = Semestre(
+        nome=nome,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        status=status,
+        created_at=timezone.now(),
+        updated_at=timezone.now()
+    )
+    semestre.save()
 
     return Response({
-
         "success": True,
-
-        "data":
-            SemestreSerializer(
-                semestres,
-                many=True
-            ).data
-
+        "data": SemestreSerializer(semestre).data
     })
 
+
+# ==========================
+# DASHBOARDS
+# ==========================
+
+
+@api_view(["GET"])
+@jwt_required
+def dashboard_coord(request):
+    professor = PerfilService.get_perfil_by_payload(request.user_payload)
+    if professor is None:
+        return Response({"success": False, "detail": "Perfil não encontrado."}, status=404)
+
+    if not professor.is_coordenador:
+        return Response({"success": False, "detail": "Acesso negado."}, status=403)
+
+    total_cursos = Curso.objects.count()
+    total_disciplinas = Disciplina.objects.count()
+    total_professores = Professor.objects.filter(curso_coordenado=professor.curso_coordenado).count()
+    semestres_ativos = Semestre.objects.filter(status=SemestreStatus.ATIVO).count()
+
+    return Response({
+        "success": True,
+        "data": {
+            "total_cursos": total_cursos,
+            "total_disciplinas": total_disciplinas,
+            "total_professores_coordenados": total_professores,
+            "semestres_ativos": semestres_ativos,
+        }
+    })
+
+
+@api_view(["GET"])
+@jwt_required
+def dashboard_admin(request):
+    total_cursos = Curso.objects.count()
+    total_disciplinas = Disciplina.objects.count()
+    total_professores = Professor.objects.count()
+    total_alocacoes = Alocacao.objects.count()
+    total_afastamentos = Afastamento.objects.count()
+
+    return Response({
+        "success": True,
+        "data": {
+            "total_cursos": total_cursos,
+            "total_disciplinas": total_disciplinas,
+            "total_professores": total_professores,
+            "total_alocacoes": total_alocacoes,
+            "total_afastamentos": total_afastamentos,
+        }
+    })
+
+
+@api_view(["GET"])
+@jwt_required
+def dashboard_prof(request):
+    professor = PerfilService.get_perfil_by_payload(request.user_payload)
+    if professor is None:
+        return Response({"success": False, "detail": "Perfil não encontrado."}, status=404)
+
+    alocacoes = Alocacao.objects.filter(professor=professor).count()
+    disciplinas_habilitadas = DisciplinaProfessor.objects.filter(professor=professor).count()
+
+    return Response({
+        "success": True,
+        "data": {
+            "professor": professor.nome,
+            "alocacoes": alocacoes,
+            "disciplinas_habilitadas": disciplinas_habilitadas,
+            "curso_coordenado": professor.curso_coordenado.nome if professor.curso_coordenado else None,
+        }
+    })
+
+
+@api_view(["GET"])
+@jwt_required
+def relatorios(request):
+    return Response({
+        "success": True,
+        "data": [
+            {"id": "alocacoes", "nome": "Relatório de Alocações"},
+            {"id": "docentes", "nome": "Relatório de Docentes"},
+            {"id": "cursos", "nome": "Relatório de Cursos"},
+        ]
+    })
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return Response({"success": False, "detail": "Payload inválido."}, status=400)
+
+    nome = body.get("nome")
+    data_inicio = body.get("data_inicio")
+    data_fim = body.get("data_fim")
+    status = body.get("status")
+
+    if not nome or not data_inicio or not data_fim or not status:
+        return Response({"success": False, "detail": "nome, data_inicio, data_fim e status são obrigatórios."}, status=400)
+
+    try:
+        data_inicio = datetime.datetime.fromisoformat(data_inicio).date()
+        data_fim = datetime.datetime.fromisoformat(data_fim).date()
+    except ValueError:
+        return Response({"success": False, "detail": "Formato de data inválido. Use AAAA-MM-DD."}, status=400)
+
+    status = status.strip().upper()
+    if status not in {choice.value for choice in SemestreStatus}:
+        return Response({"success": False, "detail": "Status inválido."}, status=400)
+
+    if data_fim < data_inicio:
+        return Response({"success": False, "detail": "data_fim deve ser posterior a data_inicio."}, status=400)
+
+    semestre = Semestre(
+        nome=nome,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        status=status,
+        created_at=timezone.now(),
+        updated_at=timezone.now()
+    )
+    semestre.save()
+
+    return Response({
+        "success": True,
+        "data": SemestreSerializer(semestre).data
+    })
+
+
+@api_view(["GET", "POST"])
+@jwt_required
+def alocacao_professores(request):
+    if request.method == "GET":
+        params = request.query_params
+        alocacoes = Alocacao.objects.all()
+
+        if params.get("professor"):
+            alocacoes = alocacoes.filter(professor_id=params.get("professor"))
+        if params.get("disciplina"):
+            alocacoes = alocacoes.filter(disciplina_id=params.get("disciplina"))
+        if params.get("semestre"):
+            alocacoes = alocacoes.filter(semestre_id=params.get("semestre"))
+        if params.get("turma"):
+            alocacoes = alocacoes.filter(turma_id=params.get("turma"))
+        if params.get("dia_semana"):
+            alocacoes = alocacoes.filter(dia_semana=params.get("dia_semana"))
+
+        return Response({
+            "success": True,
+            "data": AlocacaoSerializer(alocacoes, many=True).data
+        })
+
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return Response({"success": False, "detail": "Payload inválido."}, status=400)
+
+    serializer = AlocacaoSerializer(data=body)
+    if not serializer.is_valid():
+        return Response({"success": False, "errors": serializer.errors}, status=400)
+
+    alocacao = serializer.save(created_at=timezone.now(), updated_at=timezone.now())
+    return Response({"success": True, "data": AlocacaoSerializer(alocacao).data}, status=201)
+
+
+@api_view(["GET"])
+@jwt_required
+def alocacao_professores_total_vinculacao(request):
+    total_por_curso = (
+        CursoProfessor.objects
+        .values("curso__nome")
+        .annotate(total_vinculados=models.Count("professor"))
+        .order_by("curso__nome")
+    )
+
+    return Response({"success": True, "data": list(total_por_curso)})
+
+
+@api_view(["GET"])
+@jwt_required
+def alocacao_professores_agenda_professor(request):
+    professor_id = request.query_params.get("professor")
+    if not professor_id:
+        return Response({"success": False, "detail": "Parâmetro professor é obrigatório."}, status=400)
+
+    alocacoes = Alocacao.objects.filter(professor_id=professor_id).order_by("dia_semana", "horario_inicio")
+    return Response({"success": True, "data": AlocacaoSerializer(alocacoes, many=True).data})
+
+
+@api_view(["POST"])
+@jwt_required
+def alocacao_professores_grade_curso(request):
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return Response({"success": False, "detail": "Payload inválido."}, status=400)
+
+    curso_id = body.get("curso")
+    if not curso_id:
+        return Response({"success": False, "detail": "curso é obrigatório."}, status=400)
+
+    disciplinas = Disciplina.objects.filter(id_curso_id=curso_id)
+    return Response({"success": True, "data": DisciplinaSerializer(disciplinas, many=True).data})
+
+
+@api_view(["GET", "POST"])
+@jwt_required
+def alocacao_professores_montar_grade(request):
+    if request.method == "GET":
+        cursos = CursoSerializer(Curso.objects.all(), many=True).data
+        semestres = SemestreSerializer(Semestre.objects.all(), many=True).data
+        return Response({"success": True, "data": {"cursos": cursos, "semestres": semestres}})
+
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return Response({"success": False, "detail": "Payload inválido."}, status=400)
+
+    curso_id = body.get("curso")
+    semestre_id = body.get("semestre")
+    if not curso_id or not semestre_id:
+        return Response({"success": False, "detail": "curso e semestre são obrigatórios."}, status=400)
+
+    disciplinas = Disciplina.objects.filter(id_curso_id=curso_id)
+    alocacoes = Alocacao.objects.filter(semestre_id=semestre_id, disciplina__id_curso_id=curso_id)
+
+    return Response({
+        "success": True,
+        "data": {
+            "disciplinas": DisciplinaSerializer(disciplinas, many=True).data,
+            "alocacoes": AlocacaoSerializer(alocacoes, many=True).data,
+        }
+    })
+
+
+@api_view(["GET"])
+@jwt_required
+def grade_professor(request):
+    professor_id = request.query_params.get("professor")
+    if not professor_id:
+        return Response({"success": False, "detail": "Parâmetro professor é obrigatório."}, status=400)
+
+    alocacoes = Alocacao.objects.filter(professor_id=professor_id).order_by("semestre", "dia_semana", "horario_inicio")
+    return Response({"success": True, "data": AlocacaoSerializer(alocacoes, many=True).data})
+
+
+@api_view(["GET"])
+@jwt_required
+def disciplinas_professor(request):
+    professor_id = request.query_params.get("professor")
+    if not professor_id:
+        return Response({"success": False, "detail": "Parâmetro professor é obrigatório."}, status=400)
+
+    disciplinas = DisciplinaProfessor.objects.filter(professor_id=professor_id)
+    return Response({"success": True, "data": DisciplinaProfessorSerializer(disciplinas, many=True).data})
+
+
+@api_view(["GET", "POST"])
+@jwt_required
+def cursos_disciplinas(request):
+    if request.method == "GET":
+        params = request.query_params
+        vinculos = CursoProfessor.objects.all()
+        if params.get("curso"):
+            vinculos = vinculos.filter(curso_id=params.get("curso"))
+        if params.get("professor"):
+            vinculos = vinculos.filter(professor_id=params.get("professor"))
+        return Response({"success": True, "data": CursoProfessorSerializer(vinculos, many=True).data})
+
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return Response({"success": False, "detail": "Payload inválido."}, status=400)
+
+    serializer = CursoProfessorSerializer(data=body)
+    if not serializer.is_valid():
+        return Response({"success": False, "errors": serializer.errors}, status=400)
+
+    vinculo = serializer.save(created_at=timezone.now())
+    return Response({"success": True, "data": CursoProfessorSerializer(vinculo).data}, status=201)
+
+
+@api_view(["GET", "POST"])
+@jwt_required
+def ocorrencias(request):
+    if request.method == "GET":
+        params = request.query_params
+        ocorrencias_qs = Afastamento.objects.all()
+        if params.get("professor"):
+            ocorrencias_qs = ocorrencias_qs.filter(professor_id=params.get("professor"))
+        return Response({"success": True, "data": AfastamentoSerializer(ocorrencias_qs, many=True).data})
+
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return Response({"success": False, "detail": "Payload inválido."}, status=400)
+
+    serializer = AfastamentoSerializer(data=body)
+    if not serializer.is_valid():
+        return Response({"success": False, "errors": serializer.errors}, status=400)
+
+    ocorrencia = serializer.save(created_at=timezone.now())
+    return Response({"success": True, "data": AfastamentoSerializer(ocorrencia).data}, status=201)
+
+
+@api_view(["GET"])
+@jwt_required
+def grade_cursos(request):
+    cursos = Curso.objects.all()
+    resultado = []
+    for curso in cursos:
+        disciplinas = Disciplina.objects.filter(id_curso=curso)
+        resultado.append({
+            "curso": CursoSerializer(curso).data,
+            "disciplinas": DisciplinaSerializer(disciplinas, many=True).data,
+        })
+    return Response({"success": True, "data": resultado})
+
+
+@api_view(["POST"])
+@jwt_required
+def preferencia_dia(request):
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return Response({"success": False, "detail": "Payload inválido."}, status=400)
+
+    professor_id = body.get("professor")
+    dia_semana = body.get("dia_semana")
+    preferencia = body.get("preferencia")
+
+    if not professor_id or not dia_semana or not preferencia:
+        return Response({"success": False, "detail": "professor, dia_semana e preferencia são obrigatórios."}, status=400)
+
+    return Response({
+        "success": True,
+        "data": {
+            "professor": professor_id,
+            "dia_semana": dia_semana,
+            "preferencia": preferencia,
+            "status": "registrada"
+        }
+    })
 
 
 # ==========================
