@@ -25,6 +25,8 @@ from api.services.semestre_service import SemestreService
 
 from api.services.perfil_service import PerfilService
 
+from api.services.notify_service import NotificacaoService
+
 import jwt
 
 # from .models import User  
@@ -195,4 +197,33 @@ def get_perfil(request):
     return Response({
         "success": True,
         "data": ProfessorSerializer(professor).data,
+    })
+
+
+# Notificações
+@api_view(["GET"])
+@jwt_required
+def get_notificacoes(request):
+    """
+    GET /notificacoes/
+    Lista notificações do usuário autenticado.
+
+    Query params opcionais:
+        nao_lidas=true -> retorna somente notificações não lidas
+
+    NOTA: model Notificacao ainda não existe no banco; retorna lista
+    vazia até a tabela ser criada (ver TODO em notificacao_service.py).
+    """
+    apenas_nao_lidas = (
+        request.query_params.get("nao_lidas", "").strip().lower() == "true"
+    )
+
+    notificacoes = NotificacaoService.get_notificacoes(
+        request.user_payload,
+        apenas_nao_lidas=apenas_nao_lidas,
+    )
+
+    return Response({
+        "success": True,
+        "data": notificacoes,
     })
