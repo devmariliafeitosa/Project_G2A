@@ -1,4 +1,4 @@
-from api.models import Semestre, StatusSemestre
+from api.models import Semestre, SemestreStatus
 
 
 class SemestreService:
@@ -21,7 +21,7 @@ class SemestreService:
 
         if status:
             status = status.strip().upper()
-            valores_validos = {choice.value for choice in StatusSemestre}
+            valores_validos = {choice.value for choice in SemestreStatus}
             if status in valores_validos:
                 queryset = queryset.filter(status=status)
 
@@ -30,4 +30,4 @@ class SemestreService:
     @staticmethod
     def get_semestre_ativo():
         """Retorna o semestre atualmente ATIVO, ou None se não houver."""
-        return Semestre.objects.filter(status=StatusSemestre.ATIVO).first()
+        return Semestre.objects.filter(status=SemestreStatus.ATIVO).first()
