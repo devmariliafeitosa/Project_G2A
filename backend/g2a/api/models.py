@@ -1,10 +1,23 @@
 from django.db import models
 
-class TurnoCurso(models.TextChoices):
+
+class Modalidade(models.TextChoices):
+    PRESENCIAL = "PRESENCIAL", "Presencial"
+    EAD = "EAD", "EAD"
+    HIBRIDO = "HIBRIDO", "Híbrido"
+
+
+class Turno(models.TextChoices):
     MANHA = "MANHA", "Manhã"
     TARDE = "TARDE", "Tarde"
     NOITE = "NOITE", "Noite"
     INTEGRAL = "INTEGRAL", "Integral"
+
+
+class Nivel(models.TextChoices):
+    TECNICO = "TECNICO", "Técnico"
+    GRADUACAO = "GRADUACAO", "Graduação"
+    POS = "POS_GRADUACAO", "Pós-graduação"
 
 
 class Titulacao(models.TextChoices):
@@ -14,13 +27,19 @@ class Titulacao(models.TextChoices):
     DOUTOR = "DOUTOR", "Doutor"
 
 
+class SemestreStatus(models.TextChoices):
+    PLANEJAMENTO = "PLANEJAMENTO", "Planejamento"
+    ATIVO = "ATIVO", "Ativo"
+    ENCERRADO = "ENCERRADO", "Encerrado"
+
+
 class DiaSemana(models.TextChoices):
-    SEG = "SEG", "Seg"
-    TER = "TER", "Ter"
-    QUA = "QUA", "Qua"
-    QUI = "QUI", "Qui"
-    SEX = "SEX", "Sex"
-    SAB = "SAB", "Sab"
+    SEG = "SEG", "Segunda"
+    TER = "TER", "Terça"
+    QUA = "QUA", "Quarta"
+    QUI = "QUI", "Quinta"
+    SEX = "SEX", "Sexta"
+    SAB = "SAB", "Sábado"
 
 
 class TipoAula(models.TextChoices):
@@ -29,125 +48,407 @@ class TipoAula(models.TextChoices):
     LABORATORIO = "LABORATORIO", "Laboratório"
 
 
-class StatusSemestre(models.TextChoices):
-    PLANEJAMENTO = "PLANEJAMENTO", "Planejamento"
-    ATIVO = "ATIVO", "Ativo"
-    ENCERRADO = "ENCERRADO", "Encerrado"
+class MotivoAfastamento(models.TextChoices):
+    FERIAS = "FERIAS", "Férias"
+    LICENCA_MEDICA = "LICENCA_MEDICA", "Licença Médica"
+    LICENCA_MATERNIDADE = "LICENCA_MATERNIDADE", "Licença Maternidade"
+    CAPACITACAO = "CAPACITACAO", "Capacitação"
+    OUTRO = "OUTRO", "Outro"
 
-# Models base
 
 class Curso(models.Model):
+
+    id_curso = models.AutoField(primary_key=True)
     nome = models.CharField(max_length=100)
-    turno = models.CharField(max_length=10, choices=TurnoCurso.choices)
+
+    nivel = models.CharField(
+        max_length=20,
+        choices=Nivel.choices
+    )
+
+    modalidade = models.CharField(
+        max_length=20,
+        choices=Modalidade.choices,
+        default=Modalidade.PRESENCIAL
+    )
+
+    duracao_semestres = models.SmallIntegerField()
+
+    turno = models.CharField(
+        max_length=10,
+        choices=Turno.choices
+    )
+
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "cursos"
+        managed = False
 
 
 class Professor(models.Model):
-    nome = models.CharField(max_length=150)
-    siape = models.IntegerField(unique=True, null=True, blank=True)
-    email = models.EmailField(unique=True, null=True, blank=True)
-    data_nascimento = models.DateField(null=True, blank=True)
-    ano_egresso = models.IntegerField()
-    status = models.BooleanField(default=True)
-    senha = models.CharField(max_length=50)
-    telefone = models.CharField(max_length=20, null=True, blank=True)
 
-    titulacao = models.CharField(max_length=15, choices=Titulacao.choices)
-    carga_horaria_maxima = models.IntegerField(default=40)
+    id_prof = models.AutoField(
+        primary_key=True
+    )
 
-    is_coordenador = models.BooleanField(default=False)
+    nome = models.CharField(
+        max_length=150
+    )
+
+    siape = models.IntegerField(
+        unique=True,
+        null=True
+    )
+
+    email = models.EmailField(
+        max_length=150,
+        unique=True,
+        null=True
+    )
+
+    data_nascimento = models.DateField(
+        null=True
+    )
+    ano_egresso = models.DateField()
+
+    area_atuacao = models.CharField(
+        max_length=150,
+        null=True
+    )
+
+    status = models.BooleanField(
+        default=True
+    )
+
+    senha = models.CharField(
+        max_length=255
+    )
+
+    titulacao = models.CharField(
+        max_length=20,
+        choices=Titulacao.choices,
+        null=True
+    )
+
+    carga_horaria_maxima = models.IntegerField(
+        default=20
+    )
+
+    is_coordenador = models.BooleanField(
+        default=False
+    )
+
     curso_coordenado = models.ForeignKey(
         Curso,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="coordenadores"
+        db_column="id_curso_coordenado"
     )
+
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "professores"
+        managed = False
 
 
 class Disciplina(models.Model):
-    # corrigindo: era VARCHAR no SQL
-    id_disciplina = models.CharField(max_length=20, primary_key=True)
-    nome = models.CharField(max_length=100)
+
+    id_disciplina = models.AutoField(
+        primary_key=True
+    )
+
+    nome = models.CharField(
+        max_length=150
+    )
+
     carga_horaria = models.IntegerField()
-    curso = models.ForeignKey(Curso, on_delete=models.RESTRICT)
+    obrigatoria = models.BooleanField(
+        default=True
+    )
+
+    disciplina_prereq = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        db_column="id_disciplina_prereq"
+    )
+
+    curso = models.ForeignKey(
+        Curso,
+        on_delete=models.RESTRICT,
+        db_column="id_curso"
+    )
+
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "disciplinas"
+        managed = False
 
 
 class Turma(models.Model):
-    nome = models.CharField(max_length=25)
-    periodo = models.IntegerField()
-    turno = models.CharField(max_length=10, choices=DiaSemana.choices)
-    curso = models.ForeignKey(Curso, on_delete=models.RESTRICT)
+
+    id_turma = models.AutoField(
+        primary_key=True
+    )
+    nome = models.CharField(
+        max_length=50
+    )
+
+    periodo = models.SmallIntegerField()
+    turno = models.CharField(
+        max_length=10,
+        choices=Turno.choices
+    )
+
+    curso = models.ForeignKey(
+        Curso,
+        on_delete=models.RESTRICT,
+        db_column="id_curso"
+    )
+
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "turma"
+        managed = False
 
 
 class Semestre(models.Model):
-    nome = models.CharField(max_length=10)
+
+    id_semestre = models.AutoField(
+        primary_key=True
+    )
+
+    nome = models.CharField(
+        max_length=10
+    )
+
     data_inicio = models.DateField()
     data_fim = models.DateField()
+
     status = models.CharField(
         max_length=15,
-        choices=StatusSemestre.choices,
-        default=StatusSemestre.PLANEJAMENTO
+        choices=SemestreStatus.choices
     )
 
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+
+
     class Meta:
-        constraints = [
-            models.CheckConstraint(
-        condition=models.Q(data_fim__gt=models.F("data_inicio")),
-        name="chk_datas"
+        db_table = "semestre"
+        managed = False
+
+
+class CursoProfessor(models.Model):
+
+    id = models.AutoField(
+        primary_key=True
     )
-        ]
 
-# Relação professor-disciplina
+    curso = models.ForeignKey(
+        Curso,
+        on_delete=models.RESTRICT,
+        db_column="id_curso",
+        related_name="professores_vinculados"
+    )
 
-class DisciplinaProfessor(models.Model):
-    disciplina = models.ForeignKey(Disciplina, on_delete=models.RESTRICT)
-    professor = models.ForeignKey(Professor, on_delete=models.RESTRICT)
-    semestre = models.ForeignKey(Semestre, on_delete=models.RESTRICT)
+    professor = models.ForeignKey(
+        Professor,
+        on_delete=models.RESTRICT,
+        db_column="id_prof",
+        related_name="cursos_vinculados"
+    )
+
+    created_at = models.DateTimeField()
 
     class Meta:
+
+        db_table = "cursos_professores"
+        managed = False
+
         constraints = [
             models.UniqueConstraint(
-                fields=["disciplina", "professor", "semestre"],
-                name="uq_disc_prof_sem"
+                fields=[
+                    "curso",
+                    "professor"
+                ],
+                name="uq_curso_professor"
             )
         ]
 
-# Alocação
+
+class DisciplinaProfessor(models.Model):
+
+    id = models.AutoField(
+        primary_key=True
+    )
+
+    disciplina = models.ForeignKey(
+        Disciplina,
+        on_delete=models.RESTRICT,
+        db_column="id_disciplina",
+        related_name="professores_habilitados"
+    )
+
+    professor = models.ForeignKey(
+        Professor,
+        on_delete=models.RESTRICT,
+        db_column="id_prof",
+        related_name="disciplinas_habilitadas"
+    )
+
+    semestre = models.ForeignKey(
+        Semestre,
+        on_delete=models.RESTRICT,
+        db_column="id_semestre",
+        related_name="disciplinas_professores"
+    )
+
+    created_at = models.DateTimeField()
+
+    class Meta:
+
+        db_table = "disciplina_professores"
+        managed = False
+
+        constraints = [
+
+            models.UniqueConstraint(
+                fields=[
+                    "disciplina",
+                    "professor",
+                    "semestre"
+                ],
+                name="uq_disciplina_professor_semestre"
+            )
+        ]
+
+
+class Afastamento(models.Model):
+
+    id_afastamento = models.AutoField(
+        primary_key=True
+    )
+
+    professor = models.ForeignKey(
+        Professor,
+        on_delete=models.RESTRICT,
+        db_column="id_prof",
+        related_name="afastamentos"
+    )
+
+    data_inicio = models.DateField()
+    data_fim = models.DateField()
+
+    motivo = models.CharField(
+        max_length=30,
+        choices=MotivoAfastamento.choices
+    )
+
+    descricao = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField()
+
+    class Meta:
+
+        db_table = "afastamento"
+        managed = False
+
 
 class Alocacao(models.Model):
-    professor = models.ForeignKey(Professor, on_delete=models.RESTRICT)
-    disciplina = models.ForeignKey(Disciplina, on_delete=models.RESTRICT)
-    semestre = models.ForeignKey(Semestre, on_delete=models.RESTRICT)
-    turma = models.ForeignKey(Turma, on_delete=models.RESTRICT)
 
-    dia_semana = models.CharField(max_length=3, choices=DiaSemana.choices)
+    id_alocacao = models.AutoField(
+        primary_key=True
+    )
+
+    professor = models.ForeignKey(
+        Professor,
+        on_delete=models.RESTRICT,
+        db_column="id_prof",
+        related_name="alocacoes"
+    )
+
+    disciplina = models.ForeignKey(
+        Disciplina,
+        on_delete=models.RESTRICT,
+        db_column="id_disciplina",
+        related_name="alocacoes"
+    )
+
+    semestre = models.ForeignKey(
+        Semestre,
+        on_delete=models.RESTRICT,
+        db_column="id_semestre",
+        related_name="alocacoes"
+    )
+
+    turma = models.ForeignKey(
+        Turma,
+        on_delete=models.RESTRICT,
+        db_column="id_turma",
+        related_name="alocacoes"
+    )
+
+    dia_semana = models.CharField(
+        max_length=3,
+        choices=DiaSemana.choices
+    )
+
     horario_inicio = models.TimeField()
     horario_fim = models.TimeField()
 
-    sala = models.CharField(max_length=20, null=True, blank=True)
+    sala = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True
+    )
+
     tipo_aula = models.CharField(
         max_length=15,
         choices=TipoAula.choices,
         default=TipoAula.TEORICA
     )
 
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+
     class Meta:
+
+        db_table = "alocacao"
+        managed = False
+
         constraints = [
-            models.CheckConstraint(
-                condition=models.Q(horario_fim__gt=models.F("horario_inicio")),
-                name="chk_horario"
-            ),
+
             models.UniqueConstraint(
-                fields=["professor", "semestre", "dia_semana", "horario_inicio"],
-                name="uq_prof_horario"
+                fields=[
+                    "professor",
+                    "semestre",
+                    "dia_semana",
+                    "horario_inicio"
+                ],
+                name="uq_prof_semestre_horario"
             ),
+
             models.UniqueConstraint(
-                fields=["turma", "semestre", "dia_semana", "horario_inicio"],
-                name="uq_turma_horario"
-            ),
-        ]
-        indexes = [
-            models.Index(fields=["semestre"]),
-            models.Index(fields=["professor"]),
-            models.Index(fields=["turma"]),
+                fields=[
+                    "turma",
+                    "semestre",
+                    "dia_semana",
+                    "horario_inicio"
+                ],
+                name="uq_turma_semestre_horario"
+            )
         ]

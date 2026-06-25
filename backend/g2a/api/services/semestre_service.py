@@ -1,33 +1,112 @@
-from api.models import Semestre, StatusSemestre
+from api.models import Semestre
 
 
 class SemestreService:
-    """
-    Camada de serviço para consultas relacionadas a Semestre
-    (tela "lançamento de semestre"). A criação (POST) será adicionada
-    em etapa futura, junto com as regras de negócio do lançamento
-    (ex.: impedir mais de um semestre ATIVO simultaneamente).
-    """
 
     @staticmethod
     def get_semestres(status=None):
-        """
-        Retorna queryset de Semestre, mais recente primeiro.
 
-        Args:
-            status: PLANEJAMENTO | ATIVO | ENCERRADO (opcional).
-        """
-        queryset = Semestre.objects.all()
+        semestres = Semestre.objects.all()
 
         if status:
-            status = status.strip().upper()
-            valores_validos = {choice.value for choice in StatusSemestre}
-            if status in valores_validos:
-                queryset = queryset.filter(status=status)
 
-        return queryset.order_by("-data_inicio")
+            semestres = semestres.filter(
+                status=status
+            )
+
+
+        return semestres
+
 
     @staticmethod
-    def get_semestre_ativo():
-        """Retorna o semestre atualmente ATIVO, ou None se não houver."""
-        return Semestre.objects.filter(status=StatusSemestre.ATIVO).first()
+    def get_semestre_by_id(id_semestre):
+
+        try:
+
+            return Semestre.objects.get(
+                id_semestre=id_semestre
+            )
+
+        except Semestre.DoesNotExist:
+
+            return None
+
+
+    @staticmethod
+    def create_semestre(data):
+
+        semestre = Semestre.objects.create(
+
+            nome=data["nome"],
+
+            data_inicio=data["data_inicio"],
+
+            data_fim=data["data_fim"],
+
+            status=data.get(
+                "status",
+                "PLANEJAMENTO"
+            )
+        )
+
+        return semestre
+
+
+    @staticmethod
+    def update_semestre(
+        id_semestre,
+        data
+    ):
+
+        semestre = (
+            SemestreService
+            .get_semestre_by_id(id_semestre)
+        )
+
+        if not semestre:
+
+            return None
+
+        campos_permitidos = [
+
+            "nome",
+
+            "data_inicio",
+
+            "data_fim",
+
+            "status"
+
+        ]
+
+        for campo in campos_permitidos:
+
+            if campo in data:
+
+                setattr(
+                    semestre,
+                    campo,
+                    data[campo]
+                )
+
+        semestre.save()
+
+        return semestre
+
+
+    @staticmethod
+    def delete_semestre(id_semestre):
+
+        semestre = (
+            SemestreService
+            .get_semestre_by_id(id_semestre)
+        )
+
+
+        if not semestre:
+
+            return False
+
+        semestre.delete()
+
+        return True
