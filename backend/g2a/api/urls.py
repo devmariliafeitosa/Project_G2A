@@ -21,6 +21,7 @@ from api.views import (
     ocorrencias,
     grade_cursos,
     preferencia_dia,
+    disciplinas_ofertadas
 )
 from django.urls import path, include
 
@@ -48,4 +49,5 @@ urlpatterns = [
     path("ocorrencias/", ocorrencias),
     path("grade-cursos/", grade_cursos),
     path("preferencia-dia/", preferencia_dia),
+    path("disciplinas-ofertadas/", disciplinas_ofertadas)
 ]

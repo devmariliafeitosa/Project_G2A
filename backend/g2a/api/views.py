@@ -47,6 +47,8 @@ from api.services.semestre_service import SemestreService
 from api.services.perfil_service import PerfilService
 from api.services.notify_service import NotificacaoService
 from api.services.curso_service import CursoService
+from api.serializers.serializers import DisciplinaOfertadaSerializer
+from api.services.disciplina_ofertada_service import DisciplinaOfertadaService
 
 
 JWT_SECRET = config(
@@ -745,3 +747,40 @@ def get_notificacoes(request):
         "data": notificacoes
 
     })
+
+@api_view(["GET", "POST"])
+@jwt_required
+def disciplinas_ofertadas(request):
+
+    if request.method == "GET":
+
+        semestre_id = request.query_params.get("semestre_id")
+        turma_id = request.query_params.get("turma_id")
+
+        ofertas = DisciplinaOfertadaService.get_all(
+            semestre_id=semestre_id,
+            turma_id=turma_id
+        )
+
+        serializer = DisciplinaOfertadaSerializer(ofertas, many=True)
+
+        return Response({
+            "success": True,
+            "data": serializer.data
+        })
+
+    # POST
+    serializer = DisciplinaOfertadaSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response({
+            "success": False,
+            "errors": serializer.errors
+        }, status=400)
+
+    oferta = DisciplinaOfertadaService.create(serializer.validated_data)
+
+    return Response({
+        "success": True,
+        "data": DisciplinaOfertadaSerializer(oferta).data
+    }, status=201)
