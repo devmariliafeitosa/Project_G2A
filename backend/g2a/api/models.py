@@ -452,3 +452,78 @@ class Alocacao(models.Model):
                 name="uq_turma_semestre_horario"
             )
         ]
+
+class DisciplinaOfertada(models.Model):
+
+    id_oferta = models.AutoField(
+        primary_key=True
+    )
+
+
+    semestre = models.ForeignKey(
+        "Semestre",
+        on_delete=models.RESTRICT,
+        related_name="disciplinas_ofertadas"
+    )
+
+
+    turma = models.ForeignKey(
+        "Turma",
+        on_delete=models.RESTRICT,
+        related_name="disciplinas_ofertadas"
+    )
+
+
+    disciplina = models.ForeignKey(
+        "Disciplina",
+        on_delete=models.RESTRICT,
+        related_name="ofertas"
+    )
+
+
+    carga_horaria = models.IntegerField(
+        null=False
+    )
+
+
+    modalidade = models.CharField(
+        max_length=20,
+        default="PRESENCIAL"
+    )
+
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+
+    class Meta:
+
+        db_table = "disciplina_ofertada"
+
+        constraints = [
+
+            models.UniqueConstraint(
+                fields=[
+                    "semestre",
+                    "turma",
+                    "disciplina"
+                ],
+                name="uq_disciplina_turma_semestre"
+            )
+
+        ]
+
+
+    def __str__(self):
+
+        return (
+            f"{self.disciplina.nome} - "
+            f"{self.turma.nome} - "
+            f"{self.semestre.nome}"
+        )

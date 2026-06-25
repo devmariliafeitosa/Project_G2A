@@ -9,7 +9,8 @@ from api.models import (
     CursoProfessor,
     DisciplinaProfessor,
     Afastamento,
-    Alocacao
+    Alocacao,
+    DisciplinaOfertada
 )
 
 
@@ -245,6 +246,59 @@ class AlocacaoSerializer(serializers.ModelSerializer):
 
             "tipo_aula",
 
+            "created_at",
+            "updated_at"
+        ]
+
+
+class DisciplinaOfertadaSerializer(serializers.ModelSerializer):
+
+    disciplina_nome = serializers.CharField(
+        source="disciplina.nome",
+        read_only=True
+    )
+
+
+    turma_nome = serializers.CharField(
+        source="turma.nome",
+        read_only=True
+    )
+
+
+    semestre_nome = serializers.CharField(
+        source="semestre.nome",
+        read_only=True
+    )
+
+
+    class Meta:
+
+        model = DisciplinaOfertada
+
+        fields = [
+
+            "id_oferta",
+
+            "semestre",
+            "semestre_nome",
+
+            "turma",
+            "turma_nome",
+
+            "disciplina",
+            "disciplina_nome",
+
+            "carga_horaria",
+
+            "modalidade",
+
+            "created_at",
+            "updated_at"
+
+        ]
+
+        read_only_fields = [
+            "id_oferta",
             "created_at",
             "updated_at"
         ]
