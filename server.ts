@@ -38,7 +38,7 @@ const users = [
     email: "coord@ifce.edu.br",
     login: "coord",
     name: "Saulo Anderson",
-    password: bcrypt.hashSync("Coord@123", 10),
+    password: bcrypt.hashSync("123456", 10),
     role: "Coordenador",
     registration: "COORD01",
     campus: "Tauá",
